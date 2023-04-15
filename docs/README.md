@@ -14,8 +14,10 @@ Update files from repo:
 Search sqs-to-sns:
 
     $ helm search repo sqs-to-sns -l --version ">=0.0.0"
-    NAME                  CHART VERSION	APP VERSION	DESCRIPTION                
-    sqs-to-sns/sqs-to-sns 0.1.0        	0.1.0      	A Helm chart for Kubernetes
+    NAME                 	CHART VERSION	APP VERSION	DESCRIPTION
+    sqs-to-sns/sqs-to-sns	0.3.0        	0.3.0      	A Helm chart for Kubernetes
+    sqs-to-sns/sqs-to-sns	0.2.0        	0.2.0      	A Helm chart for Kubernetes
+    sqs-to-sns/sqs-to-sns	0.1.0        	0.1.0      	A Helm chart for Kubernetes
 
 To install the charts:
 
