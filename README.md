@@ -12,9 +12,9 @@ sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues t
 
 - [X] Forward messages.
 - [X] Docker image.
+- [X] Message attributes.
 - [ ] Helm chart.
 - [ ] Metrics.
-- [ ] Message attributes?
 
 # Build
 
@@ -25,11 +25,15 @@ sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues t
 # Env vars
 
 ```
+#
 # Mandatory
+#
 export QUEUE_URL=https://sqs.us-east-1.amazonaws.com/111111111111/queue_name
 export TOPIC_ARN=arn:aws:sns:us-east-1:222222222222:topic_name
 
+#
 # Optional
+#
 export ROLE_ARN_SQS=arn:aws:iam::111111111111:role/sqs_consumer
 export ROLE_ARN_SNS=arn:aws:iam::222222222222:role/sns_producer
 export READERS=1
@@ -37,6 +41,8 @@ export WRITERS=1
 export BUFFER=10
 export READ_ERROR_COOLDOWN=10s
 export WRITE_ERROR_COOLDOWN1=10s
+export COPY_ATTRIBUTES=true
+export DEBUG=true
 ```
 
 # Roles

@@ -19,6 +19,8 @@ type config struct {
 	buffer             int
 	errorCooldownRead  time.Duration
 	errorCooldownWrite time.Duration
+	copyAttributes     bool
+	debug              bool
 }
 
 func newConfig(me string) config {
@@ -35,6 +37,8 @@ func newConfig(me string) config {
 		buffer:             env.Int("BUFFER", 10),
 		errorCooldownRead:  env.Duration("READ_ERROR_COOLDOWN", 10*time.Second),
 		errorCooldownWrite: env.Duration("WRITE_ERROR_COOLDOWN", 10*time.Second),
+		copyAttributes:     env.Bool("COPY_ATTRIBUTES", true),
+		debug:              env.Bool("DEBUG", true),
 	}
 }
 

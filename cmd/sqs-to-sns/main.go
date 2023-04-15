@@ -14,13 +14,14 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
+	sns_types "github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/udhos/boilerplate/awsconfig"
 	"github.com/udhos/boilerplate/boilerplate"
 )
 
-const version = "0.0.0"
+const version = "0.1.0"
 
 func getVersion(me string) string {
 	return fmt.Sprintf("%s version=%s runtime=%s boilerplate=%s GOOS=%s GOARCH=%s GOMAXPROCS=%d",
@@ -200,6 +201,16 @@ func writer(id int, app *application) {
 		m := <-app.ch
 		log.Printf("%s: MessageId: %s", me, *m.MessageId)
 
+		if app.conf.debug {
+			log.Printf("%s: MessageId: %s: Attributes:%v", me, *m.MessageId, m.Attributes)
+			log.Printf("%s: MessageId: %s: MessageAttributes:%v", me, *m.MessageId, m.MessageAttributes)
+			log.Printf("%s: MessageId: %s: Body:%v", me, *m.MessageId, *m.Body)
+		}
+
+		if app.conf.copyAttributes {
+
+		}
+
 		//
 		// publish message to sns topic
 		//
@@ -207,6 +218,21 @@ func writer(id int, app *application) {
 		input := &sns.PublishInput{
 			Message:  m.Body,
 			TopicArn: aws.String(app.conf.topicArn),
+		}
+
+		if app.conf.copyAttributes {
+			//
+			// copy attributes from SQS to SNS
+			//
+			attr := map[string]sns_types.MessageAttributeValue{}
+			for k, v := range m.MessageAttributes {
+				attr[k] = sns_types.MessageAttributeValue{
+					DataType:    v.DataType,
+					BinaryValue: v.BinaryValue,
+					StringValue: v.StringValue,
+				}
+			}
+			input.MessageAttributes = attr
 		}
 
 		result, err := app.sns.Publish(context.TODO(), input)
