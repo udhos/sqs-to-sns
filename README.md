@@ -10,8 +10,10 @@ sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues t
 
 * [TODO](#todo)
 * [Build and run](#build-and-run)
-* [Env vars](#env-vars)
-* [Roles](#roles)
+* [Configuration](#configuration)
+  * [Env vars](#env-vars)
+  * [Queue list configuration file](#queue-list-configuration-file)
+  * [Roles](#roles)
 * [Docker](#docker)
 * [Helm chart](#helm-chart)
   * [Using the repository](#using-the-repository)
@@ -32,6 +34,7 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 - [X] Docker image.
 - [X] Message attributes.
 - [X] Helm chart.
+- [X] Multiple queues.
 - [ ] Metrics.
 - [ ] Health check.
 
@@ -47,22 +50,19 @@ cd sqs-to-sns
 sts-to-sns ;# run the executable
 ```
 
-# Env vars
+# Configuration
+
+## Env vars
 
 ```
-#
-# Mandatory
-#
-
-export QUEUE_URL=https://sqs.us-east-1.amazonaws.com/111111111111/queue_name
-export TOPIC_ARN=arn:aws:sns:us-east-1:222222222222:topic_name
+export QUEUES=queues.yaml ;# queue list configuration file
 
 #
-# Optional
+# These env vars define global defaults
 #
 
-export ROLE_ARN_SQS=arn:aws:iam::111111111111:role/sqs_consumer
-export ROLE_ARN_SNS=arn:aws:iam::222222222222:role/sns_producer
+export QUEUE_ROLE_ARN=arn:aws:iam::111111111111:role/sqs_consumer
+export TOPIC_ROLE_ARN=arn:aws:iam::222222222222:role/sns_producer
 
 export READERS=1                 ;# number of goroutines reading from SQS queue
 export WRITERS=1                 ;# number of goroutines writing to SNS topic
@@ -73,13 +73,55 @@ export COPY_ATTRIBUTES=true      ;# enable copying of message attributes from SQ
 export DEBUG=true                ;# enable debug logs
 ```
 
-# Roles
+## Queue list configuration file
 
-You can use `$ROLE_ARN_SQS` to specify a role to access the source queue, and `$ROLE_ARN_SNS` to specify a role to access the destination topic.
+```
+$ cat queues.yaml
+- id: q1
+  #
+  # required
+  #
+  queue_url: https://sqs.us-east-1.amazonaws.com/111111111111/queue_name1
+  topic_arn: arn:aws:sns:us-east-1:222222222222:topic_name1
+  #
+  # optional
+  #
+  #queue_role_arn: arn:aws:iam::111111111111:role/sqs_consumer1
+  #topic_role_arn: arn:aws:iam::222222222222:role/sns_producer1
+  #readers: 1
+  #writers: 1
+  #buffer: 10
+  #error_cooldown_read: 10s
+  #error_cooldown_write: 10s
+  #copy_attributes: true
+  #debug: true
+- id: q2
+  #
+  # required
+  #
+  queue_url: https://sqs.us-east-1.amazonaws.com/111111111111/queue_name2
+  topic_arn: arn:aws:sns:us-east-1:222222222222:topic_name2
+  #
+  # optional
+  #
+  #queue_role_arn: arn:aws:iam::111111111111:role/sqs_consumer2
+  #topic_role_arn: arn:aws:iam::222222222222:role/sns_producer2
+  #readers: 1
+  #writers: 1
+  #buffer: 10
+  #error_cooldown_read: 10s
+  #error_cooldown_write: 10s
+  #copy_attributes: true
+  #debug: true
+```
 
-The role in `$ROLE_ARN_SQS` must allow actions `sqs:ReceiveMessage` and `sqs:DeleteMessage` to source queue.
+## Roles
 
-The role in `$ROLE_ARN_SNS` must allow action `sns:Publish` to destination topic.
+You can use the "queue role ARN" to specify a role to access the source queue, and "topic role ARN" to specify a role to access the destination topic.
+
+The role in "queue role ARN" must allow actions `sqs:ReceiveMessage` and `sqs:DeleteMessage` to source queue.
+
+The role in "topic role ARN" must allow action `sns:Publish` to destination topic.
 
 # Docker
 

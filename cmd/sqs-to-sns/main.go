@@ -21,18 +21,22 @@ import (
 	"github.com/udhos/boilerplate/boilerplate"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 func getVersion(me string) string {
 	return fmt.Sprintf("%s version=%s runtime=%s boilerplate=%s GOOS=%s GOARCH=%s GOMAXPROCS=%d",
 		me, version, runtime.Version(), boilerplate.Version(), runtime.GOOS, runtime.GOARCH, runtime.GOMAXPROCS(0))
 }
 
-type application struct {
-	conf config
+type applicationQueue struct {
+	conf queueConfig
 	sqs  *sqs.Client
 	sns  *sns.Client
 	ch   chan types.Message
+}
+
+type application struct {
+	queues []applicationQueue
 }
 
 func main() {
@@ -55,11 +59,16 @@ func main() {
 
 	cfg := newConfig(me)
 
-	app := &application{
-		conf: cfg,
-		ch:   make(chan types.Message, cfg.buffer),
-		sqs:  sqsClient(me, cfg.queueURL, cfg.roleArnSqs),
-		sns:  snsClient(me, cfg.topicArn, cfg.roleArnSns),
+	app := &application{}
+
+	for _, qc := range cfg.queues {
+		q := applicationQueue{
+			conf: qc,
+			ch:   make(chan types.Message, qc.Buffer),
+			sqs:  sqsClient(me, qc.QueueURL, qc.QueueRoleArn),
+			sns:  snsClient(me, qc.TopicArn, qc.TopicRoleArn),
+		}
+		app.queues = append(app.queues, q)
 	}
 
 	run(app)
@@ -135,23 +144,27 @@ func getTopicRegion(topicArn string) (string, error) {
 
 func run(app *application) {
 
-	for i := 0; i < app.conf.readers; i++ {
-		go reader(i, app)
-	}
+	for _, q := range app.queues {
 
-	for i := 0; i < app.conf.writers; i++ {
-		go writer(i, app)
+		for i := 1; i <= q.conf.Readers; i++ {
+			go reader(q, i)
+		}
+
+		for i := 1; i <= q.conf.Writers; i++ {
+			go writer(q, i)
+		}
+
 	}
 
 	<-make(chan struct{}) // wait forever
 }
 
-func reader(id int, app *application) {
+func reader(q applicationQueue, readerID int) {
 
-	me := fmt.Sprintf("reader[%d]", id)
+	me := fmt.Sprintf("reader %s[%d/%d]", q.conf.ID, readerID, q.conf.Readers)
 
 	input := &sqs.ReceiveMessageInput{
-		QueueUrl: aws.String(app.conf.queueURL),
+		QueueUrl: aws.String(q.conf.QueueURL),
 		AttributeNames: []types.QueueAttributeName{
 			"SentTimestamp",
 		},
@@ -163,17 +176,17 @@ func reader(id int, app *application) {
 	}
 
 	for {
-		log.Printf("%s: ready: %s", me, app.conf.queueURL)
+		log.Printf("%s: ready: %s", me, q.conf.QueueURL)
 
 		//
 		// read message from sqs queue
 		//
 
-		resp, errRecv := app.sqs.ReceiveMessage(context.TODO(), input)
+		resp, errRecv := q.sqs.ReceiveMessage(context.TODO(), input)
 		if errRecv != nil {
 			log.Printf("%s: sqs.ReceiveMessage: error: %v, sleeping %v",
-				me, errRecv, app.conf.errorCooldownRead)
-			time.Sleep(app.conf.errorCooldownRead)
+				me, errRecv, q.conf.ErrorCooldownRead)
+			time.Sleep(q.conf.ErrorCooldownRead)
 			continue
 		}
 
@@ -187,34 +200,30 @@ func reader(id int, app *application) {
 
 		for i, msg := range resp.Messages {
 			log.Printf("%s: %d/%d MessageId: %s", me, i+1, count, *msg.MessageId)
-			app.ch <- msg
+			q.ch <- msg
 		}
 	}
 
 }
 
-func writer(id int, app *application) {
+func writer(q applicationQueue, writerID int) {
 
-	me := fmt.Sprintf("writer[%d]", id)
+	me := fmt.Sprintf("writer %s[%d/%d]", q.conf.ID, writerID, q.conf.Writers)
 
 	for {
-		log.Printf("%s: ready: %s", me, app.conf.topicArn)
+		log.Printf("%s: ready: %s", me, q.conf.TopicArn)
 
 		//
 		// read message from channel
 		//
 
-		m := <-app.ch
+		m := <-q.ch
 		log.Printf("%s: MessageId: %s", me, *m.MessageId)
 
-		if app.conf.debug {
+		if *q.conf.Debug {
 			log.Printf("%s: MessageId: %s: Attributes:%v", me, *m.MessageId, m.Attributes)
 			log.Printf("%s: MessageId: %s: MessageAttributes:%v", me, *m.MessageId, m.MessageAttributes)
 			log.Printf("%s: MessageId: %s: Body:%v", me, *m.MessageId, *m.Body)
-		}
-
-		if app.conf.copyAttributes {
-
 		}
 
 		//
@@ -223,10 +232,10 @@ func writer(id int, app *application) {
 
 		input := &sns.PublishInput{
 			Message:  m.Body,
-			TopicArn: aws.String(app.conf.topicArn),
+			TopicArn: aws.String(q.conf.TopicArn),
 		}
 
-		if app.conf.copyAttributes {
+		if *q.conf.CopyAttributes {
 			//
 			// copy attributes from SQS to SNS
 			//
@@ -241,11 +250,11 @@ func writer(id int, app *application) {
 			input.MessageAttributes = attr
 		}
 
-		result, err := app.sns.Publish(context.TODO(), input)
+		result, err := q.sns.Publish(context.TODO(), input)
 		if err != nil {
 			log.Printf("%s: sns.Publish: error: %v, sleeping %v",
-				me, err, app.conf.errorCooldownWrite)
-			time.Sleep(app.conf.errorCooldownWrite)
+				me, err, q.conf.ErrorCooldownWrite)
+			time.Sleep(q.conf.ErrorCooldownWrite)
 			continue
 		}
 
@@ -256,11 +265,11 @@ func writer(id int, app *application) {
 		//
 
 		inputDelete := &sqs.DeleteMessageInput{
-			QueueUrl:      aws.String(app.conf.queueURL),
+			QueueUrl:      aws.String(q.conf.QueueURL),
 			ReceiptHandle: m.ReceiptHandle,
 		}
 
-		_, errDelete := app.sqs.DeleteMessage(context.TODO(), inputDelete)
+		_, errDelete := q.sqs.DeleteMessage(context.TODO(), inputDelete)
 		if errDelete != nil {
 			log.Printf("%s: MessageId: %s - sqs.DeleteMessage: error: %v", me, *m.MessageId, errDelete)
 			continue
