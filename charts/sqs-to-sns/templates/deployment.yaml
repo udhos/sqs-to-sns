@@ -29,6 +29,10 @@ spec:
       {{- end}}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "sqs-to-sns.fullname" . }}-config
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -38,6 +42,9 @@ spec:
           envFrom:
           - configMapRef:
               name: {{ include "sqs-to-sns.fullname" . }}
+          volumeMounts:
+          - name: config
+            mountPath: /etc/sqs-to-sns
           ports:
             - name: health
               containerPort: {{ .Values.podHealthCheck.port }}

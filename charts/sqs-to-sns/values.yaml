@@ -44,16 +44,12 @@ podHealthCheck:
 # See: https://stackoverflow.com/questions/72816925/helm-templating-in-configmap-for-values-yaml
 #
 configMapProperties:
+  QUEUES: /etc/sqs-to-sns/queues.yaml
   #
-  # mandatory vars
+  # all env vars below define optional global defaults
   #
-  QUEUE_URL: https://sqs.us-east-1.amazonaws.com/111111111111/queue_name
-  TOPIC_ARN: arn:aws:sns:us-east-1:222222222222:topic_name
-  #
-  # optional vars
-  #
-  ROLE_ARN_SQS: arn:aws:iam::111111111111:role/sqs_consumer
-  ROLE_ARN_SNS: arn:aws:iam::222222222222:role/sns_producer
+  #QUEUE_ROLE_ARN: arn:aws:iam::111111111111:role/sqs_consumer
+  #TOPIC_ROLE_ARN: arn:aws:iam::222222222222:role/sns_producer
   READERS: "1"               # number of goroutines reading from SQS queue
   WRITERS: "1"               # number of goroutines writing to SNS topic
   BUFFER: "10"               # buffer size between readers and writers
@@ -61,6 +57,45 @@ configMapProperties:
   WRITE_ERROR_COOLDOWN: 10s  # cooldown holdtime between write errors
   COPY_ATTRIBUTES: "true"    # enable copying of message attributes from SQS message to SNS message
   DEBUG: "true"              # enable debug logs
+
+configDir:
+  queues.yaml: |
+    - id: q1
+      #
+      # required
+      #
+      queue_url: https://sqs.us-east-1.amazonaws.com/111111111111/queue_name1
+      topic_arn: arn:aws:sns:us-east-1:222222222222:topic_name1
+      #
+      # optional
+      #
+      #queue_role_arn: arn:aws:iam::111111111111:role/sqs_consumer1
+      #topic_role_arn: arn:aws:iam::222222222222:role/sns_producer1
+      #readers: 1
+      #writers: 1
+      #buffer: 10
+      #error_cooldown_read: 10s
+      #error_cooldown_write: 10s
+      #copy_attributes: true
+      #debug: true
+    - id: q2
+      #
+      # required
+      #
+      queue_url: https://sqs.us-east-1.amazonaws.com/111111111111/queue_name2
+      topic_arn: arn:aws:sns:us-east-1:222222222222:topic_name2
+      #
+      # optional
+      #
+      #queue_role_arn: arn:aws:iam::111111111111:role/sqs_consumer2
+      #topic_role_arn: arn:aws:iam::222222222222:role/sns_producer2
+      #readers: 1
+      #writers: 1
+      #buffer: 10
+      #error_cooldown_read: 10s
+      #error_cooldown_write: 10s
+      #copy_attributes: true
+      #debug: true
 
 resources:
   requests:
