@@ -6,10 +6,10 @@
 
 # sqs-to-sns
 
-sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues to AWS SNS Topics. 
+sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues to AWS SNS Topics.
 
 * [TODO](#todo)
-* [Build](#build)
+* [Build and run](#build-and-run)
 * [Env vars](#env-vars)
 * [Roles](#roles)
 * [Docker](#docker)
@@ -35,14 +35,16 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 - [ ] Metrics.
 - [ ] Health check.
 
-# Build
+# Build and run
 
 ```
 git clone https://github.com/udhos/sqs-to-sns
 
 cd sqs-to-sns
 
-./build.sh
+./build.sh ;# compile
+
+sts-to-sns ;# run the executable
 ```
 
 # Env vars
