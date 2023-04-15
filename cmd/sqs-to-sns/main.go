@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/udhos/boilerplate/awsconfig"
 	"github.com/udhos/boilerplate/boilerplate"
 )
@@ -152,7 +152,7 @@ func reader(id int, app *application) {
 	me := fmt.Sprintf("reader[%d]", id)
 
 	input := &sqs.ReceiveMessageInput{
-		QueueUrl: &app.conf.queueURL,
+		QueueUrl: aws.String(app.conf.queueURL),
 		AttributeNames: []types.QueueAttributeName{
 			"SentTimestamp",
 		},
@@ -206,7 +206,7 @@ func writer(id int, app *application) {
 
 		input := &sns.PublishInput{
 			Message:  m.Body,
-			TopicArn: &app.conf.topicArn,
+			TopicArn: aws.String(app.conf.topicArn),
 		}
 
 		result, err := app.sns.Publish(context.TODO(), input)
