@@ -28,21 +28,24 @@ sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues t
 #
 # Mandatory
 #
+
 export QUEUE_URL=https://sqs.us-east-1.amazonaws.com/111111111111/queue_name
 export TOPIC_ARN=arn:aws:sns:us-east-1:222222222222:topic_name
 
 #
 # Optional
 #
+
 export ROLE_ARN_SQS=arn:aws:iam::111111111111:role/sqs_consumer
 export ROLE_ARN_SNS=arn:aws:iam::222222222222:role/sns_producer
-export READERS=1
-export WRITERS=1
-export BUFFER=10
-export READ_ERROR_COOLDOWN=10s
-export WRITE_ERROR_COOLDOWN1=10s
-export COPY_ATTRIBUTES=true
-export DEBUG=true
+
+export READERS=1                 ;# number of goroutines reading from SQS queue
+export WRITERS=1                 ;# number of goroutines writing to SNS topic
+export BUFFER=10                 ;# buffer size between readers and writers
+export READ_ERROR_COOLDOWN=10s   ;# cooldown holdtime between read errors
+export WRITE_ERROR_COOLDOWN1=10s ;# cooldown holdtime between write errors
+export COPY_ATTRIBUTES=true      ;# enable copying of message attributes from SQS message to SNS message
+export DEBUG=true                ;# enable debug logs
 ```
 
 # Roles
