@@ -21,7 +21,7 @@ import (
 	"github.com/udhos/boilerplate/boilerplate"
 )
 
-const version = "0.2.0"
+const version = "0.3.0"
 
 func getVersion(me string) string {
 	return fmt.Sprintf("%s version=%s runtime=%s boilerplate=%s GOOS=%s GOARCH=%s GOMAXPROCS=%d",
@@ -32,7 +32,12 @@ type applicationQueue struct {
 	conf queueConfig
 	sqs  *sqs.Client
 	sns  *sns.Client
-	ch   chan types.Message
+	ch   chan message
+}
+
+type message struct {
+	sqs      types.Message
+	received time.Time
 }
 
 type application struct {
@@ -64,7 +69,7 @@ func main() {
 	for _, qc := range cfg.queues {
 		q := applicationQueue{
 			conf: qc,
-			ch:   make(chan types.Message, qc.Buffer),
+			ch:   make(chan message, qc.Buffer),
 			sqs:  sqsClient(me, qc.QueueURL, qc.QueueRoleArn),
 			sns:  snsClient(me, qc.TopicArn, qc.TopicRoleArn),
 		}
@@ -200,7 +205,7 @@ func reader(q applicationQueue, readerID int) {
 
 		for i, msg := range resp.Messages {
 			log.Printf("%s: %d/%d MessageId: %s", me, i+1, count, *msg.MessageId)
-			q.ch <- msg
+			q.ch <- message{sqs: msg, received: time.Now()}
 		}
 	}
 
@@ -217,12 +222,13 @@ func writer(q applicationQueue, writerID int) {
 		// read message from channel
 		//
 
-		m := <-q.ch
+		sqsMsg := <-q.ch
+		m := sqsMsg.sqs
 		log.Printf("%s: MessageId: %s", me, *m.MessageId)
 
 		if *q.conf.Debug {
-			log.Printf("%s: MessageId: %s: Attributes:%v", me, *m.MessageId, m.Attributes)
-			log.Printf("%s: MessageId: %s: MessageAttributes:%v", me, *m.MessageId, m.MessageAttributes)
+			log.Printf("%s: MessageId: %s: Attributes:%v", me, *m.MessageId, toJSON(m.Attributes))
+			log.Printf("%s: MessageId: %s: MessageAttributes:%v", me, *m.MessageId, toJSON(m.MessageAttributes))
 			log.Printf("%s: MessageId: %s: Body:%v", me, *m.MessageId, *m.Body)
 		}
 
@@ -275,7 +281,10 @@ func writer(q applicationQueue, writerID int) {
 			continue
 		}
 
-		log.Printf("%s: sqs.DeleteMessage: %s", me, *m.MessageId)
+		elap := time.Since(sqsMsg.received)
+
+		log.Printf("%s: sqs.DeleteMessage: %s - total sqs-to-sns latency: %v",
+			me, *m.MessageId, elap)
 	}
 
 }
