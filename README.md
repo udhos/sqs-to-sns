@@ -10,11 +10,11 @@ sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues t
 
 # TODO
 
-[X] Forward messages.
-[X] Docker image.
-[ ] Helm chart.
-[ ] Metrics.
-[ ] Message attributes?
+- [X] Forward messages.
+- [X] Docker image.
+- [ ] Helm chart.
+- [ ] Metrics.
+- [ ] Message attributes?
 
 # Build
 
