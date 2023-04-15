@@ -58,11 +58,9 @@ func main() {
 	app := &application{
 		conf: cfg,
 		ch:   make(chan types.Message, cfg.buffer),
+		sqs:  sqsClient(me, cfg.queueURL, cfg.roleArnSqs),
+		sns:  snsClient(me, cfg.topicArn, cfg.roleArnSns),
 	}
-
-	app.sqs = sqsClient(me, cfg.queueURL, cfg.roleArnSqs)
-
-	app.sns = snsClient(me, cfg.topicArn, cfg.roleArnSns)
 
 	run(app)
 }
@@ -167,6 +165,10 @@ func reader(id int, app *application) {
 	for {
 		log.Printf("%s: ready: %s", me, app.conf.queueURL)
 
+		//
+		// read message from sqs queue
+		//
+
 		resp, errRecv := app.sqs.ReceiveMessage(context.TODO(), input)
 		if errRecv != nil {
 			log.Printf("%s: sqs.ReceiveMessage: error: %v, sleeping %v",
@@ -174,6 +176,10 @@ func reader(id int, app *application) {
 			time.Sleep(app.conf.errorCooldownRead)
 			continue
 		}
+
+		//
+		// push messages into channel
+		//
 
 		count := len(resp.Messages)
 
