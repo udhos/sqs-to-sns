@@ -33,7 +33,7 @@ type config struct {
 	queues        []queueConfig
 
 	// default values
-	topicArn           string
+	queueRoleArn       string
 	topicRoleArn       string
 	readers            int
 	writers            int
@@ -53,7 +53,7 @@ func newConfig(me string) config {
 		queueListFile: env.String("QUEUES", "queues.yaml"),
 
 		// default values
-		topicArn:           env.String("TOPIC_ARN", ""),
+		queueRoleArn:       env.String("QUEUE_ROLE_ARN", ""),
 		topicRoleArn:       env.String("TOPIC_ROLE_ARN", ""),
 		readers:            env.Int("READERS", 1),
 		writers:            env.Int("WRITERS", 1),
@@ -113,8 +113,8 @@ func toJSON(v interface{}) string {
 }
 
 func queueDefaults(q queueConfig, cfg config) queueConfig {
-	if q.TopicArn == "" {
-		q.TopicArn = cfg.topicArn
+	if q.QueueRoleArn == "" {
+		q.QueueRoleArn = cfg.queueRoleArn
 	}
 	if q.TopicRoleArn == "" {
 		q.TopicRoleArn = cfg.topicRoleArn
