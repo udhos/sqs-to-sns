@@ -9,6 +9,7 @@ RUN apk add git
 RUN adduser -D -g '' appuser
 
 COPY ./cmd/ /tmp/app/cmd
+COPY ./sqsclient/ /tmp/app/sqsclient
 COPY go.* /tmp/app/
 WORKDIR /tmp/app
 RUN go mod tidy

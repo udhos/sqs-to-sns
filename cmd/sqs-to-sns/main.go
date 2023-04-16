@@ -22,7 +22,7 @@ import (
 	"github.com/udhos/sqs-to-sns/sqsclient"
 )
 
-const version = "0.4.0"
+const version = "0.5.0"
 
 func getVersion(me string) string {
 	return fmt.Sprintf("%s version=%s runtime=%s boilerplate=%s GOOS=%s GOARCH=%s GOMAXPROCS=%d",
