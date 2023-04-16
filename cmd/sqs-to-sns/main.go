@@ -19,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/udhos/boilerplate/awsconfig"
 	"github.com/udhos/boilerplate/boilerplate"
+	"github.com/udhos/sqs-to-sns/sqsclient"
 )
 
 const version = "0.4.0"
@@ -73,7 +74,7 @@ func main() {
 		q := applicationQueue{
 			conf: qc,
 			ch:   make(chan message, qc.Buffer),
-			sqs:  sqsClient(me, qc.QueueURL, qc.QueueRoleArn),
+			sqs:  sqsclient.NewClient(me, qc.QueueURL, qc.QueueRoleArn),
 			sns:  snsClient(me, qc.TopicArn, qc.TopicRoleArn),
 		}
 		app.queues = append(app.queues, q)
@@ -82,28 +83,6 @@ func main() {
 	go serveMetrics(cfg.metricsAddr, cfg.metricsPath)
 
 	run(app)
-}
-
-func sqsClient(sessionName, queueURL, roleArn string) *sqs.Client {
-	const me = "sqsClient"
-
-	queueRegion, errQueue := getQueueRegion(queueURL)
-	if errQueue != nil {
-		log.Fatalf("%s: queue region error: %v", me, errQueue)
-	}
-
-	awsConfOptions := awsconfig.Options{
-		Region:          queueRegion,
-		RoleArn:         roleArn,
-		RoleSessionName: sessionName,
-	}
-
-	awsConfSqs, errAwsConf := awsconfig.AwsConfig(awsConfOptions)
-	if errAwsConf != nil {
-		log.Fatalf("%s: aws config error: %v", me, errAwsConf)
-	}
-
-	return sqs.NewFromConfig(awsConfSqs.AwsConfig)
 }
 
 func snsClient(sessionName, topicArn, roleArn string) *sns.Client {
@@ -126,18 +105,6 @@ func snsClient(sessionName, topicArn, roleArn string) *sns.Client {
 	}
 
 	return sns.NewFromConfig(awsConf.AwsConfig)
-}
-
-// https://sqs.us-east-1.amazonaws.com/123456789012/myqueue
-func getQueueRegion(queueURL string) (string, error) {
-	const me = "getQueueRegion"
-	fields := strings.SplitN(queueURL, ".", 3)
-	if len(fields) < 3 {
-		return "", fmt.Errorf("%s: bad queue url=[%s]", me, queueURL)
-	}
-	region := fields[1]
-	log.Printf("%s: queueRegion=[%s]", me, region)
-	return region, nil
 }
 
 // arn:aws:sns:us-east-1:123456789012:mytopic

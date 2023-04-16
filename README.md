@@ -15,6 +15,7 @@ sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues t
   * [Queue list configuration file](#queue-list-configuration-file)
   * [Roles](#roles)
 * [Prometheus Metrics](#prometheus-metrics)
+* [Utility to populate SQS queue](#utility-to-populate-sqs-queue)
 * [Docker](#docker)
 * [Helm chart](#helm-chart)
   * [Using the repository](#using-the-repository)
@@ -159,6 +160,15 @@ The role in "topic role ARN" must allow action `sns:Publish` to destination topi
 # HELP sqstosns_delivery_duration_seconds How long it took to fully process the delivery, partitioned by queue.
 # TYPE sqstosns_delivery_duration_seconds histogram
 ```
+
+# Utility to populate SQS queue
+
+Use `batch-sqs` to send messages to an SQS queue.
+
+```
+batch-sqs -queueURL https://sqs.us-east-1.amazonaws.com/111111111111/queue_name -count 50
+```
+
 
 # Docker
 
