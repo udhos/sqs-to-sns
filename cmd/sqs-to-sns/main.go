@@ -42,6 +42,7 @@ type message struct {
 
 type application struct {
 	queues []applicationQueue
+	m      *metrics
 }
 
 func main() {
@@ -64,7 +65,9 @@ func main() {
 
 	cfg := newConfig(me)
 
-	app := &application{}
+	app := &application{
+		m: newMetrics(cfg.metricsNamespace),
+	}
 
 	for _, qc := range cfg.queues {
 		q := applicationQueue{
@@ -75,6 +78,8 @@ func main() {
 		}
 		app.queues = append(app.queues, q)
 	}
+
+	go serveMetrics(cfg.metricsAddr, cfg.metricsPath)
 
 	run(app)
 }
@@ -152,11 +157,11 @@ func run(app *application) {
 	for _, q := range app.queues {
 
 		for i := 1; i <= q.conf.Readers; i++ {
-			go reader(q, i)
+			go reader(q, i, app.m)
 		}
 
 		for i := 1; i <= q.conf.Writers; i++ {
-			go writer(q, i)
+			go writer(q, i, app.m)
 		}
 
 	}
@@ -164,9 +169,11 @@ func run(app *application) {
 	<-make(chan struct{}) // wait forever
 }
 
-func reader(q applicationQueue, readerID int) {
+func reader(q applicationQueue, readerID int, m *metrics) {
 
-	me := fmt.Sprintf("reader %s[%d/%d]", q.conf.ID, readerID, q.conf.Readers)
+	queueID := q.conf.ID
+
+	me := fmt.Sprintf("reader %s[%d/%d]", queueID, readerID, q.conf.Readers)
 
 	input := &sqs.ReceiveMessageInput{
 		QueueUrl: aws.String(q.conf.QueueURL),
@@ -187,10 +194,13 @@ func reader(q applicationQueue, readerID int) {
 		// read message from sqs queue
 		//
 
+		m.receive.WithLabelValues(queueID).Inc()
+
 		resp, errRecv := q.sqs.ReceiveMessage(context.TODO(), input)
 		if errRecv != nil {
 			log.Printf("%s: sqs.ReceiveMessage: error: %v, sleeping %v",
 				me, errRecv, q.conf.ErrorCooldownRead)
+			m.receiveError.WithLabelValues(queueID).Inc()
 			time.Sleep(q.conf.ErrorCooldownRead)
 			continue
 		}
@@ -203,6 +213,13 @@ func reader(q applicationQueue, readerID int) {
 
 		log.Printf("%s: sqs.ReceiveMessage: found %d messages", me, count)
 
+		if count == 0 {
+			m.receiveEmpty.WithLabelValues(queueID).Inc()
+			continue
+		}
+
+		m.receiveMessages.WithLabelValues(queueID).Add(float64(count))
+
 		for i, msg := range resp.Messages {
 			log.Printf("%s: %d/%d MessageId: %s", me, i+1, count, *msg.MessageId)
 			q.ch <- message{sqs: msg, received: time.Now()}
@@ -211,9 +228,11 @@ func reader(q applicationQueue, readerID int) {
 
 }
 
-func writer(q applicationQueue, writerID int) {
+func writer(q applicationQueue, writerID int, metric *metrics) {
 
-	me := fmt.Sprintf("writer %s[%d/%d]", q.conf.ID, writerID, q.conf.Writers)
+	queueID := q.conf.ID
+
+	me := fmt.Sprintf("writer %s[%d/%d]", queueID, writerID, q.conf.Writers)
 
 	for {
 		log.Printf("%s: ready: %s", me, q.conf.TopicArn)
@@ -260,6 +279,7 @@ func writer(q applicationQueue, writerID int) {
 		if err != nil {
 			log.Printf("%s: sns.Publish: error: %v, sleeping %v",
 				me, err, q.conf.ErrorCooldownWrite)
+			metric.publishError.WithLabelValues(queueID).Inc()
 			time.Sleep(q.conf.ErrorCooldownWrite)
 			continue
 		}
@@ -278,6 +298,7 @@ func writer(q applicationQueue, writerID int) {
 		_, errDelete := q.sqs.DeleteMessage(context.TODO(), inputDelete)
 		if errDelete != nil {
 			log.Printf("%s: MessageId: %s - sqs.DeleteMessage: error: %v", me, *m.MessageId, errDelete)
+			metric.deleteError.WithLabelValues(queueID).Inc()
 			continue
 		}
 
@@ -285,6 +306,8 @@ func writer(q applicationQueue, writerID int) {
 
 		log.Printf("%s: sqs.DeleteMessage: %s - total sqs-to-sns latency: %v",
 			me, *m.MessageId, elap)
+
+		metric.recordDelivery(q.conf.ID, elap)
 	}
 
 }

@@ -46,7 +46,13 @@ podHealthCheck:
 configMapProperties:
   QUEUES: /etc/sqs-to-sns/queues.yaml
   #
-  # all env vars below define optional global defaults
+  # prometheus metrics
+  #
+  METRICS_ADDR: :3000
+  METRICS_PATH: /metrics
+  METRICS_NAMESPACE: sqstosns
+  #
+  # all env vars below define optional global defaults for per-queue config
   #
   #QUEUE_ROLE_ARN: arn:aws:iam::111111111111:role/sqs_consumer
   #TOPIC_ROLE_ARN: arn:aws:iam::222222222222:role/sns_producer

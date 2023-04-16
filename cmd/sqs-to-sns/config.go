@@ -32,6 +32,10 @@ type config struct {
 	queueListFile string
 	queues        []queueConfig
 
+	metricsAddr      string
+	metricsPath      string
+	metricsNamespace string
+
 	// default values
 	queueRoleArn       string
 	topicRoleArn       string
@@ -51,6 +55,10 @@ func newConfig(me string) config {
 	cfg := config{
 		// per-queue values
 		queueListFile: env.String("QUEUES", "queues.yaml"),
+
+		metricsAddr:      env.String("METRICS_ADDR", ":3000"),
+		metricsPath:      env.String("METRICS_PATH", "/metrics"),
+		metricsNamespace: env.String("METRICS_NAMESPACE", "sqstosns"),
 
 		// default values
 		queueRoleArn:       env.String("QUEUE_ROLE_ARN", ""),

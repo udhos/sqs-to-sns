@@ -14,6 +14,7 @@ sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues t
   * [Env vars](#env-vars)
   * [Queue list configuration file](#queue-list-configuration-file)
   * [Roles](#roles)
+* [Prometheus Metrics](#prometheus-metrics)
 * [Docker](#docker)
 * [Helm chart](#helm-chart)
   * [Using the repository](#using-the-repository)
@@ -35,7 +36,7 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 - [X] Message attributes.
 - [X] Helm chart.
 - [X] Multiple queues.
-- [ ] Metrics.
+- [X] Metrics.
 - [ ] Health check.
 
 # Build and run
@@ -58,7 +59,15 @@ sts-to-sns ;# run the executable
 export QUEUES=queues.yaml ;# queue list configuration file
 
 #
-# These env vars define global defaults
+# Prometheus metrics
+#
+
+export METRICS_ADDR=:3000
+export METRICS_PATH=/metrics
+export METRICS_NAMESPACE=sqstosns
+
+#
+# These env vars define global defaults for per-queue config
 #
 
 export QUEUE_ROLE_ARN=arn:aws:iam::111111111111:role/sqs_consumer
@@ -122,6 +131,34 @@ You can use the "queue role ARN" to specify a role to access the source queue, a
 The role in "queue role ARN" must allow actions `sqs:ReceiveMessage` and `sqs:DeleteMessage` to source queue.
 
 The role in "topic role ARN" must allow action `sns:Publish` to destination topic.
+
+# Prometheus Metrics
+
+```
+# HELP sqstosns_receive_count How many SQS receives called, partitioned by queue.
+# TYPE sqstosns_receive_count counter
+
+# HELP sqstosns_receive_error_count How many SQS receives errored, partitioned by queue.
+# TYPE sqstosns_receive_error_count counter
+
+# HELP sqstosns_receive_empty_count How many SQS empty receives, partitioned by queue.
+# TYPE sqstosns_receive_empty_count counter
+
+# HELP sqstosns_receive_messages_count How many SQS messages received, partitioned by queue.
+# TYPE sqstosns_receive_messages_count counter
+
+# HELP sqstosns_publish_error_count How many SNS publishes errored, partitioned by queue.
+# TYPE sqstosns_publish_error_count counter
+
+# HELP sqstosns_delete_error_count How many SQS deletes errored, partitioned by queue.
+# TYPE sqstosns_delete_error_count counter
+
+# HELP sqstosns_delivery_count How many SQS deliveries fully processed, partitioned by queue.
+# TYPE sqstosns_delivery_count counter
+
+# HELP sqstosns_delivery_duration_seconds How long it took to fully process the delivery, partitioned by queue.
+# TYPE sqstosns_delivery_duration_seconds histogram
+```
 
 # Docker
 
