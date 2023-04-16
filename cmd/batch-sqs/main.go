@@ -47,6 +47,8 @@ func main() {
 		messages = append(messages, m)
 	}
 
+	begin := time.Now()
+
 	for sent := 0; sent < count; {
 		input := &sqs.SendMessageBatchInput{
 			Entries:  messages,
@@ -62,4 +64,11 @@ func main() {
 		sent += batch
 		log.Printf("%s: sent: %d/%d", me, sent, count)
 	}
+
+	elap := time.Since(begin)
+
+	rate := float64(count) / float64(elap/time.Second)
+
+	log.Printf("%s: sent=%d interval=%v rate=%v messages/sec",
+		me, count, elap, rate)
 }
