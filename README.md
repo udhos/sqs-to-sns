@@ -136,26 +136,29 @@ The role in "topic role ARN" must allow action `sns:Publish` to destination topi
 # Prometheus Metrics
 
 ```
-# HELP sqstosns_receive_count How many SQS receives called, partitioned by queue.
-# TYPE sqstosns_receive_count counter
+# HELP sqstosns_buffer How many SQS messages are buffered with us, partitioned by queue.
+# TYPE sqstosns_buffer gauge
 
-# HELP sqstosns_receive_error_count How many SQS receives errored, partitioned by queue.
-# TYPE sqstosns_receive_error_count counter
+# HELP sqstosns_receive_total How many SQS receives called, partitioned by queue.
+# TYPE sqstosns_receive_total counter
 
-# HELP sqstosns_receive_empty_count How many SQS empty receives, partitioned by queue.
-# TYPE sqstosns_receive_empty_count counter
+# HELP sqstosns_receive_error_total How many SQS receives errored, partitioned by queue.
+# TYPE sqstosns_receive_error_total counter
 
-# HELP sqstosns_receive_messages_count How many SQS messages received, partitioned by queue.
-# TYPE sqstosns_receive_messages_count counter
+# HELP sqstosns_receive_empty_total How many SQS empty receives, partitioned by queue.
+# TYPE sqstosns_receive_empty_total counter
 
-# HELP sqstosns_publish_error_count How many SNS publishes errored, partitioned by queue.
-# TYPE sqstosns_publish_error_count counter
+# HELP sqstosns_receive_messages_total How many SQS messages received, partitioned by queue.
+# TYPE sqstosns_receive_messages_total counter
 
-# HELP sqstosns_delete_error_count How many SQS deletes errored, partitioned by queue.
-# TYPE sqstosns_delete_error_count counter
+# HELP sqstosns_publish_error_total How many SNS publishes errored, partitioned by queue.
+# TYPE sqstosns_publish_error_total counter
 
-# HELP sqstosns_delivery_count How many SQS deliveries fully processed, partitioned by queue.
-# TYPE sqstosns_delivery_count counter
+# HELP sqstosns_delete_error_total How many SQS deletes errored, partitioned by queue.
+# TYPE sqstosns_delete_error_total counter
+
+# HELP sqstosns_delivery_total How many SQS deliveries fully processed, partitioned by queue.
+# TYPE sqstosns_delivery_total counter
 
 # HELP sqstosns_delivery_duration_seconds How long it took to fully process the delivery, partitioned by queue.
 # TYPE sqstosns_delivery_duration_seconds histogram
@@ -165,8 +168,12 @@ The role in "topic role ARN" must allow action `sns:Publish` to destination topi
 
 Use `batch-sqs` to send messages to an SQS queue.
 
+**CAUTION**: With default parameters you would inject your SQS with 10000 messages at a rate of ~1000 messages/sec.
+
 ```
-batch-sqs -queueURL https://sqs.us-east-1.amazonaws.com/111111111111/queue_name -count 50
+batch-sqs -queueURL https://sqs.us-east-1.amazonaws.com/111111111111/queue_name
+
+2023/04/17 00:27:04 batch-sqs: sent=10000 interval=9.275251836s rate=1111.111111111111 messages/sec
 ```
 
 

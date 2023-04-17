@@ -18,6 +18,8 @@ func serveMetrics(addr, path string) {
 }
 
 type metrics struct {
+	buffer *prometheus.GaugeVec
+
 	receive         *prometheus.CounterVec
 	receiveError    *prometheus.CounterVec
 	receiveEmpty    *prometheus.CounterVec
@@ -32,7 +34,9 @@ type metrics struct {
 }
 
 const (
-	countSuffix = "_count" // or _total ??
+	countSuffix = "_total"
+
+	bufferName = "buffer"
 
 	receiveName         = "receive" + countSuffix
 	receiveErrorName    = "receive_error" + countSuffix
@@ -69,26 +73,28 @@ func newCounter(namespace, name, desc string) *prometheus.CounterVec {
 func newMetrics(namespace string) *metrics {
 	const me = "newMetrics"
 
-	m := &metrics{}
-
-	m.receive = newCounter(namespace, receiveName, "How many SQS receives called, partitioned by queue.")
-	m.receiveError = newCounter(namespace, receiveErrorName, "How many SQS receives errored, partitioned by queue.")
-	m.receiveEmpty = newCounter(namespace, receiveEmptyName, "How many SQS empty receives, partitioned by queue.")
-	m.receiveMessages = newCounter(namespace, receiveMessagesName, "How many SQS messages received, partitioned by queue.")
-	m.publishError = newCounter(namespace, publishErrorName, "How many SNS publishes errored, partitioned by queue.")
-	m.deleteError = newCounter(namespace, deleteErrorName, "How many SQS deletes errored, partitioned by queue.")
-
 	//
-	// delivery
+	// buffer
 	//
 
-	m.delivery = newCounter(namespace, deliveryName, "How many SQS deliveries fully processed, partitioned by queue.")
+	buffer := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      bufferName,
+			Help:      "How many SQS messages are buffered with us, partitioned by queue.",
+		},
+		[]string{"queue"},
+	)
+
+	if err := prometheus.Register(buffer); err != nil {
+		log.Fatalf("%s: buffer was not registered: %s", me, err)
+	}
 
 	//
 	// latency
 	//
 
-	m.latency = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+	latency := prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: namespace,
 		Name:      latencyName,
 		Help:      "How long it took to fully process the delivery, partitioned by queue.",
@@ -97,8 +103,24 @@ func newMetrics(namespace string) *metrics {
 		[]string{"queue"},
 	)
 
-	if err := prometheus.Register(m.latency); err != nil {
+	if err := prometheus.Register(latency); err != nil {
 		log.Fatalf("%s: latency was not registered: %s", me, err)
+	}
+
+	//
+	// all metrics
+	//
+
+	m := &metrics{
+		buffer:          buffer,
+		receive:         newCounter(namespace, receiveName, "How many SQS receives called, partitioned by queue."),
+		receiveError:    newCounter(namespace, receiveErrorName, "How many SQS receives errored, partitioned by queue."),
+		receiveEmpty:    newCounter(namespace, receiveEmptyName, "How many SQS empty receives, partitioned by queue."),
+		receiveMessages: newCounter(namespace, receiveMessagesName, "How many SQS messages received, partitioned by queue."),
+		publishError:    newCounter(namespace, publishErrorName, "How many SNS publishes errored, partitioned by queue."),
+		deleteError:     newCounter(namespace, deleteErrorName, "How many SQS deletes errored, partitioned by queue."),
+		delivery:        newCounter(namespace, deliveryName, "How many SQS deliveries fully processed, partitioned by queue."),
+		latency:         latency,
 	}
 
 	return m

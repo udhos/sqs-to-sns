@@ -22,7 +22,7 @@ import (
 	"github.com/udhos/sqs-to-sns/sqsclient"
 )
 
-const version = "0.5.0"
+const version = "0.6.0"
 
 func getVersion(me string) string {
 	return fmt.Sprintf("%s version=%s runtime=%s boilerplate=%s GOOS=%s GOARCH=%s GOMAXPROCS=%d",
@@ -190,6 +190,7 @@ func reader(q applicationQueue, readerID int, m *metrics) {
 		for i, msg := range resp.Messages {
 			log.Printf("%s: %d/%d MessageId: %s", me, i+1, count, *msg.MessageId)
 			q.ch <- message{sqs: msg, received: time.Now()}
+			m.buffer.WithLabelValues(queueID).Inc()
 		}
 	}
 
@@ -209,6 +210,7 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 		//
 
 		sqsMsg := <-q.ch
+		metric.buffer.WithLabelValues(queueID).Dec()
 		m := sqsMsg.sqs
 		log.Printf("%s: MessageId: %s", me, *m.MessageId)
 
