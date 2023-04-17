@@ -35,7 +35,7 @@ func main() {
 	var count int
 	var writers int
 
-	flag.IntVar(&count, "count", 10000, "total number of messagesto send")
+	flag.IntVar(&count, "count", 10000, "total number of messages to send")
 	flag.IntVar(&writers, "writers", 30, "number of concurrent writers")
 	flag.StringVar(&conf.queueURL, "queueURL", "", "required queue URL")
 	flag.StringVar(&conf.roleArn, "roleArn", "", "optional role ARN")
