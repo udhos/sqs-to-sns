@@ -207,7 +207,7 @@ func reader(q applicationQueue, readerID int, m *metrics) {
 func writer(q applicationQueue, writerID int, metric *metrics) {
 
 	debug := *q.conf.Debug
-        copyAttributes := *q.conf.CopyAttributes
+	copyAttributes := *q.conf.CopyAttributes
 
 	queueID := q.conf.ID
 
@@ -281,9 +281,9 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 		_, errDelete := q.sqs.DeleteMessage(context.TODO(), inputDelete)
 		if errDelete != nil {
 			log.Printf("%s: MessageId: %s - sqs.DeleteMessage: error: %v, sleeping %v",
-                                me, *m.MessageId, errDelete, q.conf.ErrorCooldownDelete)
+				me, *m.MessageId, errDelete, q.conf.ErrorCooldownDelete)
 			metric.deleteError.WithLabelValues(queueID).Inc()
-                        time.Sleep(q.conf.ErrorCooldownDelete)
+			time.Sleep(q.conf.ErrorCooldownDelete)
 			continue
 		}
 
