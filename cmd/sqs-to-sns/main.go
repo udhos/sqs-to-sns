@@ -207,6 +207,7 @@ func reader(q applicationQueue, readerID int, m *metrics) {
 func writer(q applicationQueue, writerID int, metric *metrics) {
 
 	debug := *q.conf.Debug
+        copyAttr := *q.conf.CopyAttributes
 
 	queueID := q.conf.ID
 
@@ -240,7 +241,7 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 			TopicArn: aws.String(q.conf.TopicArn),
 		}
 
-		if *q.conf.CopyAttributes {
+		if copyAttributes {
 			//
 			// copy attributes from SQS to SNS
 			//
