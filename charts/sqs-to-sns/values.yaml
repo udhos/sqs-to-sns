@@ -59,8 +59,9 @@ configMapProperties:
   READERS: "1"               # number of goroutines reading from SQS queue
   WRITERS: "1"               # number of goroutines writing to SNS topic
   BUFFER: "10"               # buffer size between readers and writers
-  READ_ERROR_COOLDOWN: 10s   # cooldown holdtime between read errors
-  WRITE_ERROR_COOLDOWN: 10s  # cooldown holdtime between write errors
+  READ_ERROR_COOLDOWN: 10s   # cooldown holdtime after read errors
+  WRITE_ERROR_COOLDOWN: 10s  # cooldown holdtime after write errors
+  DELETE_ERROR_COOLDOWN: 10s  # cooldown holdtime after delete errors
   COPY_ATTRIBUTES: "true"    # enable copying of message attributes from SQS message to SNS message
   DEBUG: "true"              # enable debug logs
 
@@ -82,6 +83,7 @@ configDir:
       #buffer: 10
       #error_cooldown_read: 10s
       #error_cooldown_write: 10s
+      #error_cooldown_delete: 10s
       #copy_attributes: true
       #debug: true
     - id: q2
@@ -100,6 +102,7 @@ configDir:
       #buffer: 10
       #error_cooldown_read: 10s
       #error_cooldown_write: 10s
+      #error_cooldown_delete: 10s
       #copy_attributes: true
       #debug: true
 

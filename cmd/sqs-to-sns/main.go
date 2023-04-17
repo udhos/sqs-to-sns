@@ -22,7 +22,7 @@ import (
 	"github.com/udhos/sqs-to-sns/sqsclient"
 )
 
-const version = "0.6.0"
+const version = "0.7.0"
 
 func getVersion(me string) string {
 	return fmt.Sprintf("%s version=%s runtime=%s boilerplate=%s GOOS=%s GOARCH=%s GOMAXPROCS=%d",
@@ -207,6 +207,7 @@ func reader(q applicationQueue, readerID int, m *metrics) {
 func writer(q applicationQueue, writerID int, metric *metrics) {
 
 	debug := *q.conf.Debug
+	copyAttributes := *q.conf.CopyAttributes
 
 	queueID := q.conf.ID
 
@@ -240,7 +241,7 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 			TopicArn: aws.String(q.conf.TopicArn),
 		}
 
-		if *q.conf.CopyAttributes {
+		if copyAttributes {
 			//
 			// copy attributes from SQS to SNS
 			//
@@ -255,10 +256,10 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 			input.MessageAttributes = attr
 		}
 
-		result, err := q.sns.Publish(context.TODO(), input)
-		if err != nil {
+		result, errPub := q.sns.Publish(context.TODO(), input)
+		if errPub != nil {
 			log.Printf("%s: sns.Publish: error: %v, sleeping %v",
-				me, err, q.conf.ErrorCooldownWrite)
+				me, errPub, q.conf.ErrorCooldownWrite)
 			metric.publishError.WithLabelValues(queueID).Inc()
 			time.Sleep(q.conf.ErrorCooldownWrite)
 			continue
@@ -279,8 +280,10 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 
 		_, errDelete := q.sqs.DeleteMessage(context.TODO(), inputDelete)
 		if errDelete != nil {
-			log.Printf("%s: MessageId: %s - sqs.DeleteMessage: error: %v", me, *m.MessageId, errDelete)
+			log.Printf("%s: MessageId: %s - sqs.DeleteMessage: error: %v, sleeping %v",
+				me, *m.MessageId, errDelete, q.conf.ErrorCooldownDelete)
 			metric.deleteError.WithLabelValues(queueID).Inc()
+			time.Sleep(q.conf.ErrorCooldownDelete)
 			continue
 		}
 
@@ -291,7 +294,7 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 				me, *m.MessageId, elap)
 		}
 
-		metric.recordDelivery(q.conf.ID, elap)
+		metric.recordDelivery(queueID, elap)
 	}
 
 }
