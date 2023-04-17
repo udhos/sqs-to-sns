@@ -138,6 +138,8 @@ func run(app *application) {
 
 func reader(q applicationQueue, readerID int, m *metrics) {
 
+	debug := *q.conf.Debug
+
 	queueID := q.conf.ID
 
 	me := fmt.Sprintf("reader %s[%d/%d]", queueID, readerID, q.conf.Readers)
@@ -155,7 +157,9 @@ func reader(q applicationQueue, readerID int, m *metrics) {
 	}
 
 	for {
-		log.Printf("%s: ready: %s", me, q.conf.QueueURL)
+		if debug {
+			log.Printf("%s: ready: %s", me, q.conf.QueueURL)
+		}
 
 		//
 		// read message from sqs queue
@@ -178,7 +182,9 @@ func reader(q applicationQueue, readerID int, m *metrics) {
 
 		count := len(resp.Messages)
 
-		log.Printf("%s: sqs.ReceiveMessage: found %d messages", me, count)
+		if debug {
+			log.Printf("%s: sqs.ReceiveMessage: found %d messages", me, count)
+		}
 
 		if count == 0 {
 			m.receiveEmpty.WithLabelValues(queueID).Inc()
@@ -188,7 +194,9 @@ func reader(q applicationQueue, readerID int, m *metrics) {
 		m.receiveMessages.WithLabelValues(queueID).Add(float64(count))
 
 		for i, msg := range resp.Messages {
-			log.Printf("%s: %d/%d MessageId: %s", me, i+1, count, *msg.MessageId)
+			if debug {
+				log.Printf("%s: %d/%d MessageId: %s", me, i+1, count, *msg.MessageId)
+			}
 			q.ch <- message{sqs: msg, received: time.Now()}
 			m.buffer.WithLabelValues(queueID).Inc()
 		}
@@ -198,12 +206,16 @@ func reader(q applicationQueue, readerID int, m *metrics) {
 
 func writer(q applicationQueue, writerID int, metric *metrics) {
 
+	debug := *q.conf.Debug
+
 	queueID := q.conf.ID
 
 	me := fmt.Sprintf("writer %s[%d/%d]", queueID, writerID, q.conf.Writers)
 
 	for {
-		log.Printf("%s: ready: %s", me, q.conf.TopicArn)
+		if debug {
+			log.Printf("%s: ready: %s", me, q.conf.TopicArn)
+		}
 
 		//
 		// read message from channel
@@ -212,9 +224,8 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 		sqsMsg := <-q.ch
 		metric.buffer.WithLabelValues(queueID).Dec()
 		m := sqsMsg.sqs
-		log.Printf("%s: MessageId: %s", me, *m.MessageId)
 
-		if *q.conf.Debug {
+		if debug {
 			log.Printf("%s: MessageId: %s: Attributes:%v", me, *m.MessageId, toJSON(m.Attributes))
 			log.Printf("%s: MessageId: %s: MessageAttributes:%v", me, *m.MessageId, toJSON(m.MessageAttributes))
 			log.Printf("%s: MessageId: %s: Body:%v", me, *m.MessageId, *m.Body)
@@ -253,7 +264,9 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 			continue
 		}
 
-		log.Printf("%s: sns.Publish: %s", me, *result.MessageId)
+		if debug {
+			log.Printf("%s: sns.Publish: %s", me, *result.MessageId)
+		}
 
 		//
 		// delete from source queue
@@ -273,8 +286,10 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 
 		elap := time.Since(sqsMsg.received)
 
-		log.Printf("%s: sqs.DeleteMessage: %s - total sqs-to-sns latency: %v",
-			me, *m.MessageId, elap)
+		if debug {
+			log.Printf("%s: sqs.DeleteMessage: %s - total sqs-to-sns latency: %v",
+				me, *m.MessageId, elap)
+		}
 
 		metric.recordDelivery(q.conf.ID, elap)
 	}
