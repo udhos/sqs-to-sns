@@ -280,8 +280,10 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 
 		_, errDelete := q.sqs.DeleteMessage(context.TODO(), inputDelete)
 		if errDelete != nil {
-			log.Printf("%s: MessageId: %s - sqs.DeleteMessage: error: %v", me, *m.MessageId, errDelete)
+			log.Printf("%s: MessageId: %s - sqs.DeleteMessage: error: %v, sleeping %v",
+                                me, *m.MessageId, errDelete, q.conf.ErrorCooldownDelete)
 			metric.deleteError.WithLabelValues(queueID).Inc()
+                        time.Sleep(q.conf.ErrorCooldownDelete)
 			continue
 		}
 
