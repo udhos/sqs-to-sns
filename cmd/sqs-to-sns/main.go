@@ -207,7 +207,7 @@ func reader(q applicationQueue, readerID int, m *metrics) {
 func writer(q applicationQueue, writerID int, metric *metrics) {
 
 	debug := *q.conf.Debug
-        copyAttr := *q.conf.CopyAttributes
+        copyAttributes := *q.conf.CopyAttributes
 
 	queueID := q.conf.ID
 
