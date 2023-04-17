@@ -24,6 +24,7 @@ type queueConfig struct {
 	Buffer             int           `yaml:"buffer"`
 	ErrorCooldownRead  time.Duration `yaml:"error_cooldown_read"`
 	ErrorCooldownWrite time.Duration `yaml:"error_cooldown_write"`
+        ErrorCooldownDelete time.Duration `yaml:"error_cooldown_delete"`
 	CopyAttributes     *bool         `yaml:"copy_attributes"`
 	Debug              *bool         `yaml:"debug"`
 }
@@ -44,6 +45,7 @@ type config struct {
 	buffer             int
 	errorCooldownRead  time.Duration
 	errorCooldownWrite time.Duration
+        errorCooldownDelete time.Duration
 	copyAttributes     bool
 	debug              bool
 }
@@ -68,6 +70,7 @@ func newConfig(me string) config {
 		buffer:             env.Int("BUFFER", 10),
 		errorCooldownRead:  env.Duration("READ_ERROR_COOLDOWN", 10*time.Second),
 		errorCooldownWrite: env.Duration("WRITE_ERROR_COOLDOWN", 10*time.Second),
+                errorCooldownDelete: env.Duration("DELETE_ERROR_COOLDOWN", 10*time.Second),
 		copyAttributes:     env.Bool("COPY_ATTRIBUTES", true),
 		debug:              env.Bool("DEBUG", true),
 	}
@@ -141,6 +144,9 @@ func queueDefaults(q queueConfig, cfg config) queueConfig {
 	}
 	if q.ErrorCooldownWrite == 0 {
 		q.ErrorCooldownWrite = cfg.errorCooldownWrite
+	}
+	if q.ErrorCooldownDelete == 0 {
+		q.ErrorCooldownDelete = cfg.errorCooldownDelete
 	}
 	if q.CopyAttributes == nil {
 		b := cfg.copyAttributes
