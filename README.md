@@ -77,8 +77,9 @@ export TOPIC_ROLE_ARN=arn:aws:iam::222222222222:role/sns_producer
 export READERS=1                 ;# number of goroutines reading from SQS queue
 export WRITERS=1                 ;# number of goroutines writing to SNS topic
 export BUFFER=10                 ;# buffer size between readers and writers
-export READ_ERROR_COOLDOWN=10s   ;# cooldown holdtime between read errors
-export WRITE_ERROR_COOLDOWN=10s  ;# cooldown holdtime between write errors
+export READ_ERROR_COOLDOWN=10s   ;# cooldown holdtime after read errors
+export WRITE_ERROR_COOLDOWN=10s  ;# cooldown holdtime after write errors
+export DELETE_ERROR_COOLDOWN=10s  ;# cooldown holdtime after delete errors
 export COPY_ATTRIBUTES=true      ;# enable copying of message attributes from SQS message to SNS message
 export DEBUG=true                ;# enable debug logs
 ```
@@ -103,6 +104,7 @@ $ cat queues.yaml
   #buffer: 10
   #error_cooldown_read: 10s
   #error_cooldown_write: 10s
+  #error_cooldown_delete: 10s
   #copy_attributes: true
   #debug: true
 - id: q2
@@ -121,6 +123,7 @@ $ cat queues.yaml
   #buffer: 10
   #error_cooldown_read: 10s
   #error_cooldown_write: 10s
+  #error_cooldown_delete: 10s
   #copy_attributes: true
   #debug: true
 ```
