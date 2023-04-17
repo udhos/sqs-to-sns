@@ -291,7 +291,7 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 				me, *m.MessageId, elap)
 		}
 
-		metric.recordDelivery(q.conf.ID, elap)
+		metric.recordDelivery(queueID, elap)
 	}
 
 }
