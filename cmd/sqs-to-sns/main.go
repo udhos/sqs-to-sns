@@ -256,10 +256,10 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 			input.MessageAttributes = attr
 		}
 
-		result, err := q.sns.Publish(context.TODO(), input)
-		if err != nil {
+		result, errPub := q.sns.Publish(context.TODO(), input)
+		if errPub != nil {
 			log.Printf("%s: sns.Publish: error: %v, sleeping %v",
-				me, err, q.conf.ErrorCooldownWrite)
+				me, errPub, q.conf.ErrorCooldownWrite)
 			metric.publishError.WithLabelValues(queueID).Inc()
 			time.Sleep(q.conf.ErrorCooldownWrite)
 			continue
