@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -24,6 +25,13 @@ type config struct {
 	wg       sync.WaitGroup
 }
 
+const version = "0.1.0"
+
+func getVersion(me string) string {
+	return fmt.Sprintf("%s version=%s runtime=%s GOOS=%s GOARCH=%s GOMAXPROCS=%d",
+		me, version, runtime.Version(), runtime.GOOS, runtime.GOARCH, runtime.GOMAXPROCS(0))
+}
+
 const batch = 10
 
 func main() {
@@ -34,12 +42,24 @@ func main() {
 
 	var count int
 	var writers int
+	var showVersion bool
 
 	flag.IntVar(&count, "count", 10000, "total number of messages to send")
 	flag.IntVar(&writers, "writers", 30, "number of concurrent writers")
 	flag.StringVar(&conf.queueURL, "queueURL", "", "required queue URL")
 	flag.StringVar(&conf.roleArn, "roleArn", "", "optional role ARN")
+	flag.BoolVar(&showVersion, "version", showVersion, "show version")
 	flag.Parse()
+
+	{
+		v := getVersion(me)
+		if showVersion {
+			fmt.Print(v)
+			fmt.Println()
+			return
+		}
+		log.Print(v)
+	}
 
 	messages := []types.SendMessageBatchRequestEntry{}
 
@@ -65,7 +85,7 @@ func main() {
 
 	elap := time.Since(begin)
 
-	rate := float64(count) / float64(elap/time.Second)
+	rate := float64(count) / (float64(elap) / float64(time.Second))
 
 	log.Printf("%s: sent=%d interval=%v rate=%v messages/sec",
 		me, count, elap, rate)
