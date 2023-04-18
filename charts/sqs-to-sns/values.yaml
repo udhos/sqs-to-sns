@@ -23,8 +23,6 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-podAnnotations: {}
-
 podSecurityContext: {}
   # fsGroup: 2000
 
@@ -35,6 +33,12 @@ securityContext: {}
   # readOnlyRootFilesystem: true
   # runAsNonRoot: true
   # runAsUser: 1000
+
+podAnnotations:
+  prometheus.io/path: /metrics
+  prometheus.io/port: "3000"
+  prometheus.io/scrape: "true"
+  #sidecar.istio.io/inject: "false"
 
 podHealthCheck:
   port: 8888
@@ -61,14 +65,14 @@ configMapProperties:
   #
   #QUEUE_ROLE_ARN: arn:aws:iam::111111111111:role/sqs_consumer
   #TOPIC_ROLE_ARN: arn:aws:iam::222222222222:role/sns_producer
-  READERS: "1"               # number of goroutines reading from SQS queue
-  WRITERS: "1"               # number of goroutines writing to SNS topic
-  BUFFER: "10"               # buffer size between readers and writers
-  READ_ERROR_COOLDOWN: 10s   # cooldown holdtime after read errors
-  WRITE_ERROR_COOLDOWN: 10s  # cooldown holdtime after write errors
+  READERS: "3"                # number of goroutines reading from SQS queue
+  WRITERS: "3"                # number of goroutines writing to SNS topic
+  BUFFER: "30"                # buffer size between readers and writers
+  READ_ERROR_COOLDOWN: 10s    # cooldown holdtime after read errors
+  WRITE_ERROR_COOLDOWN: 10s   # cooldown holdtime after write errors
   DELETE_ERROR_COOLDOWN: 10s  # cooldown holdtime after delete errors
-  COPY_ATTRIBUTES: "true"    # enable copying of message attributes from SQS message to SNS message
-  DEBUG: "true"              # enable debug logs
+  COPY_ATTRIBUTES: "true"     # enable copying of message attributes from SQS message to SNS message
+  DEBUG: "true"               # enable debug logs
 
 configDir:
   queues.yaml: |
