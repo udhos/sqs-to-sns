@@ -3,6 +3,18 @@ entries:
   sqs-to-sns:
   - apiVersion: v2
     appVersion: 0.9.0
+    created: "2023-04-18T15:16:33.34097868-03:00"
+    description: A Helm chart for Kubernetes
+    digest: cda9ee6a925e043ce01f055c00311130000430810b519f0dd8a61118dac172b1
+    name: sqs-to-sns
+    sources:
+    - https://github.com/udhos/sqs-to-sns
+    type: application
+    urls:
+    - https://udhos.github.io/sqs-to-sns/sqs-to-sns-0.11.0.tgz
+    version: 0.11.0
+  - apiVersion: v2
+    appVersion: 0.9.0
     created: "2023-04-18T13:21:59.192400048-03:00"
     description: A Helm chart for Kubernetes
     digest: 265fb06875e2e4a977c6bf887f07ac111158eeb1631ac13241b9cdca84bea97e
@@ -109,4 +121,4 @@ entries:
     urls:
     - https://udhos.github.io/sqs-to-sns/sqs-to-sns-0.1.0.tgz
     version: 0.1.0
-generated: "2023-04-18T13:21:59.191166396-03:00"
+generated: "2023-04-18T15:16:33.33973931-03:00"
