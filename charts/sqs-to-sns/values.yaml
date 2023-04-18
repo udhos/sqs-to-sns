@@ -37,7 +37,7 @@ securityContext: {}
   # runAsUser: 1000
 
 podHealthCheck:
-  port: 8080
+  port: 8888
   path: /health
 
 #
@@ -45,6 +45,11 @@ podHealthCheck:
 #
 configMapProperties:
   QUEUES: /etc/sqs-to-sns/queues.yaml
+  #
+  # health checks (use for livenessProbe only, not for readinessProbe)
+  #
+  HEALTH_ADDR: :8888
+  HEALTH_PATH: /health
   #
   # prometheus metrics
   #

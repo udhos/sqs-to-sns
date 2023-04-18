@@ -33,6 +33,9 @@ type config struct {
 	queueListFile string
 	queues        []queueConfig
 
+	healthAddr string
+	healthPath string
+
 	metricsAddr      string
 	metricsPath      string
 	metricsNamespace string
@@ -57,6 +60,9 @@ func newConfig(me string) config {
 	cfg := config{
 		// per-queue values
 		queueListFile: env.String("QUEUES", "queues.yaml"),
+
+		healthAddr: env.String("HEALTH_ADDR", ":8888"),
+		healthPath: env.String("HEALTH_PATH", "/health"),
 
 		metricsAddr:      env.String("METRICS_ADDR", ":3000"),
 		metricsPath:      env.String("METRICS_PATH", "/metrics"),

@@ -14,7 +14,7 @@ func serveMetrics(addr, path string) {
 	log.Printf("%s: starting metrics server at: %s %s", me, addr, path)
 	http.Handle(path, promhttp.Handler())
 	err := http.ListenAndServe(addr, nil)
-	log.Printf("%s: ListenAndServe error: %v", me, err)
+	log.Fatalf("%s: ListenAndServe error: %v", me, err)
 }
 
 type metrics struct {

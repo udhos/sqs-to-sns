@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -22,7 +23,7 @@ import (
 	"github.com/udhos/sqs-to-sns/sqsclient"
 )
 
-const version = "0.7.0"
+const version = "0.8.0"
 
 func getVersion(me string) string {
 	return fmt.Sprintf("%s version=%s runtime=%s boilerplate=%s GOOS=%s GOARCH=%s GOMAXPROCS=%d",
@@ -30,10 +31,27 @@ func getVersion(me string) string {
 }
 
 type applicationQueue struct {
-	conf queueConfig
-	sqs  *sqs.Client
-	sns  *sns.Client
-	ch   chan message
+	conf         queueConfig
+	sqs          *sqs.Client
+	sns          *sns.Client
+	ch           chan message
+	healthStatus health
+	lock         sync.Mutex
+}
+
+func (q *applicationQueue) putStatus(status error) {
+	h := health{status: status, when: time.Now()}
+	q.lock.Lock()
+	q.healthStatus = h
+	q.lock.Unlock()
+	//log.Printf("putStatus: %s %v", q.conf.ID, h)
+}
+
+func (q *applicationQueue) getStatus() health {
+	q.lock.Lock()
+	h := q.healthStatus
+	q.lock.Unlock()
+	return h
 }
 
 type message struct {
@@ -42,7 +60,7 @@ type message struct {
 }
 
 type application struct {
-	queues []applicationQueue
+	queues []*applicationQueue
 	m      *metrics
 }
 
@@ -71,7 +89,7 @@ func main() {
 	}
 
 	for _, qc := range cfg.queues {
-		q := applicationQueue{
+		q := &applicationQueue{
 			conf: qc,
 			ch:   make(chan message, qc.Buffer),
 			sqs:  sqsclient.NewClient(me, qc.QueueURL, qc.QueueRoleArn),
@@ -80,9 +98,13 @@ func main() {
 		app.queues = append(app.queues, q)
 	}
 
+	go serveHealth(app, cfg.healthAddr, cfg.healthPath)
+
 	go serveMetrics(cfg.metricsAddr, cfg.metricsPath)
 
 	run(app)
+
+	<-make(chan struct{}) // wait forever
 }
 
 func snsClient(sessionName, topicArn, roleArn string) *sns.Client {
@@ -120,7 +142,6 @@ func getTopicRegion(topicArn string) (string, error) {
 }
 
 func run(app *application) {
-
 	for _, q := range app.queues {
 
 		for i := 1; i <= q.conf.Readers; i++ {
@@ -132,11 +153,9 @@ func run(app *application) {
 		}
 
 	}
-
-	<-make(chan struct{}) // wait forever
 }
 
-func reader(q applicationQueue, readerID int, m *metrics) {
+func reader(q *applicationQueue, readerID int, m *metrics) {
 
 	debug := *q.conf.Debug
 
@@ -173,6 +192,7 @@ func reader(q applicationQueue, readerID int, m *metrics) {
 				me, errRecv, q.conf.ErrorCooldownRead)
 			m.receiveError.WithLabelValues(queueID).Inc()
 			time.Sleep(q.conf.ErrorCooldownRead)
+			q.putStatus(errRecv)
 			continue
 		}
 
@@ -204,7 +224,7 @@ func reader(q applicationQueue, readerID int, m *metrics) {
 
 }
 
-func writer(q applicationQueue, writerID int, metric *metrics) {
+func writer(q *applicationQueue, writerID int, metric *metrics) {
 
 	debug := *q.conf.Debug
 	copyAttributes := *q.conf.CopyAttributes
@@ -262,6 +282,7 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 				me, errPub, q.conf.ErrorCooldownWrite)
 			metric.publishError.WithLabelValues(queueID).Inc()
 			time.Sleep(q.conf.ErrorCooldownWrite)
+			q.putStatus(errPub)
 			continue
 		}
 
@@ -284,6 +305,7 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 				me, *m.MessageId, errDelete, q.conf.ErrorCooldownDelete)
 			metric.deleteError.WithLabelValues(queueID).Inc()
 			time.Sleep(q.conf.ErrorCooldownDelete)
+			q.putStatus(errDelete)
 			continue
 		}
 
@@ -294,6 +316,7 @@ func writer(q applicationQueue, writerID int, metric *metrics) {
 				me, *m.MessageId, elap)
 		}
 
+		q.putStatus(nil)
 		metric.recordDelivery(queueID, elap)
 	}
 

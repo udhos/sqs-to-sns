@@ -8,7 +8,6 @@
 
 sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues to AWS SNS Topics.
 
-* [TODO](#todo)
 * [Build and run](#build-and-run)
 * [Configuration](#configuration)
   * [Env vars](#env-vars)
@@ -16,6 +15,7 @@ sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues t
   * [Roles](#roles)
 * [Prometheus Metrics](#prometheus-metrics)
 * [Utility to populate SQS queue](#utility-to-populate-sqs-queue)
+* [TODO](#todo)
 * [Docker](#docker)
 * [Helm chart](#helm-chart)
   * [Using the repository](#using-the-repository)
@@ -29,16 +29,6 @@ sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues t
   * [Uninstall](#uninstall)
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
-
-# TODO
-
-- [X] Forward messages.
-- [X] Docker image.
-- [X] Message attributes.
-- [X] Helm chart.
-- [X] Multiple queues.
-- [X] Metrics.
-- [ ] Health check.
 
 # Build and run
 
@@ -58,6 +48,15 @@ sts-to-sns ;# run the executable
 
 ```
 export QUEUES=queues.yaml ;# queue list configuration file
+
+#
+# Health check
+#
+# HINT: Recommended for livenessProbe only, not for readinessProbe
+#
+
+export HEALTH_ADDR=:8888
+export HEALTH_PATH=/health
 
 #
 # Prometheus metrics
@@ -179,6 +178,16 @@ batch-sqs -queueURL https://sqs.us-east-1.amazonaws.com/111111111111/queue_name
 2023/04/17 00:27:04 batch-sqs: sent=10000 interval=9.275251836s rate=1111.111111111111 messages/sec
 ```
 
+# TODO
+
+- [X] Forward messages.
+- [X] Docker image.
+- [X] Message attributes.
+- [X] Helm chart.
+- [X] Multiple queues.
+- [X] Metrics.
+- [X] Health check.
+- [ ] Tests.
 
 # Docker
 
