@@ -1,0 +1,19 @@
+- id: q1
+  #
+  # required
+  #
+  queue_url: https://sqs.us-east-1.amazonaws.com/111111111111/queue_name1
+  topic_arn: arn:aws:sns:us-east-1:222222222222:topic_name1
+  #
+  # optional
+  #
+  #queue_role_arn: arn:aws:iam::111111111111:role/sqs_consumer1
+  #topic_role_arn: arn:aws:iam::222222222222:role/sns_producer1
+  #readers: 1
+  #writers: 1
+  #buffer: 10
+  #error_cooldown_read: 10s
+  #error_cooldown_write: 10s
+  #error_cooldown_delete: 10s
+  #copy_attributes: true
+  #debug: true

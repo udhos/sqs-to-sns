@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
@@ -9,7 +10,17 @@ import (
 	"github.com/udhos/boilerplate/awsconfig"
 )
 
-func snsClient(sessionName, topicArn, roleArn string) *sns.Client {
+type snsClient interface {
+	Publish(ctx context.Context, params *sns.PublishInput, optFns ...func(*sns.Options)) (*sns.PublishOutput, error)
+}
+
+func newSnsClient(sessionName, topicArn, roleArn string) snsClient {
+	return newSnsClientAws(sessionName, topicArn, roleArn) // create real sns client
+}
+
+type newSnsClientFunc func(sessionName, topicArn, roleArn string) snsClient
+
+func newSnsClientAws(sessionName, topicArn, roleArn string) *sns.Client {
 	const me = "snsClient"
 
 	topicRegion, errTopic := getTopicRegion(topicArn)

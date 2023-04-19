@@ -18,7 +18,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/udhos/boilerplate/boilerplate"
-	"github.com/udhos/sqs-to-sns/sqsclient"
 )
 
 const version = "0.10.0"
@@ -30,8 +29,8 @@ func getVersion(me string) string {
 
 type applicationQueue struct {
 	conf         queueConfig
-	sqs          *sqs.Client
-	sns          *sns.Client
+	sqs          sqsClient
+	sns          snsClient
 	ch           chan message
 	healthStatus health
 	lock         sync.Mutex
@@ -93,14 +92,14 @@ func main() {
 	// create and run application
 	//
 
-	app := newApp(me)
+	app := newApp(me, newSqsClient, newSnsClient)
 
 	run(app)
 
 	<-make(chan struct{}) // wait forever
 }
 
-func newApp(me string) *application {
+func newApp(me string, newSqsClient newSqsClientFunc, newSnsClient newSnsClientFunc) *application {
 	cfg := newConfig(me)
 
 	app := &application{
@@ -112,8 +111,8 @@ func newApp(me string) *application {
 		q := &applicationQueue{
 			conf: qc,
 			ch:   make(chan message, qc.Buffer),
-			sqs:  sqsclient.NewClient(me, qc.QueueURL, qc.QueueRoleArn),
-			sns:  snsClient(me, qc.TopicArn, qc.TopicRoleArn),
+			sqs:  newSqsClient(me, qc.QueueURL, qc.QueueRoleArn),
+			sns:  newSnsClient(me, qc.TopicArn, qc.TopicRoleArn),
 		}
 		app.queues = append(app.queues, q)
 	}
