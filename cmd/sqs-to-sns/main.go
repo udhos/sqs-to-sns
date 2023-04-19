@@ -283,6 +283,10 @@ func writer(q *applicationQueue, writerID int, metric *metrics) {
 			log.Printf("%s: sns.Publish: %s", me, *result.MessageId)
 		}
 
+		// delivery latency is measured after successful publish,
+		// while delivery success is recorded after successful delete
+		elap := time.Since(sqsMsg.received)
+
 		//
 		// delete from source queue
 		//
@@ -302,13 +306,13 @@ func writer(q *applicationQueue, writerID int, metric *metrics) {
 			continue
 		}
 
-		elap := time.Since(sqsMsg.received)
-
 		if debug {
 			log.Printf("%s: sqs.DeleteMessage: %s - total sqs-to-sns latency: %v",
 				me, *m.MessageId, elap)
 		}
 
+		// delivery latency is measured after successful publish,
+		// while delivery success is recorded after successful delete
 		q.putStatus(nil)
 		metric.recordDelivery(queueID, elap)
 	}
