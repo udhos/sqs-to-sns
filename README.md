@@ -78,7 +78,7 @@ export WRITERS=1                 ;# number of goroutines writing to SNS topic
 export BUFFER=10                 ;# buffer size between readers and writers
 export READ_ERROR_COOLDOWN=10s   ;# cooldown holdtime after read errors
 export WRITE_ERROR_COOLDOWN=10s  ;# cooldown holdtime after write errors
-export DELETE_ERROR_COOLDOWN=10s  ;# cooldown holdtime after delete errors
+export DELETE_ERROR_COOLDOWN=10s ;# cooldown holdtime after delete errors
 export COPY_ATTRIBUTES=true      ;# enable copying of message attributes from SQS message to SNS message
 export DEBUG=true                ;# enable debug logs
 ```
@@ -187,7 +187,7 @@ batch-sqs -queueURL https://sqs.us-east-1.amazonaws.com/111111111111/queue_name
 - [X] Multiple queues.
 - [X] Metrics.
 - [X] Health check.
-- [ ] Tests.
+- [X] Tests.
 
 # Docker
 

@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
 
@@ -18,12 +17,11 @@ import (
 	sns_types "github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"github.com/udhos/boilerplate/awsconfig"
 	"github.com/udhos/boilerplate/boilerplate"
 	"github.com/udhos/sqs-to-sns/sqsclient"
 )
 
-const version = "0.9.0"
+const version = "0.10.0"
 
 func getVersion(me string) string {
 	return fmt.Sprintf("%s version=%s runtime=%s boilerplate=%s GOOS=%s GOARCH=%s GOMAXPROCS=%d",
@@ -60,15 +58,24 @@ type message struct {
 }
 
 type application struct {
+	cfg    config
 	queues []*applicationQueue
 	m      *metrics
 }
 
 func main() {
 
+	//
+	// parse cmd line
+	//
+
 	var showVersion bool
 	flag.BoolVar(&showVersion, "version", showVersion, "show version")
 	flag.Parse()
+
+	//
+	// show version
+	//
 
 	me := filepath.Base(os.Args[0])
 
@@ -82,10 +89,23 @@ func main() {
 		log.Print(v)
 	}
 
+	//
+	// create and run application
+	//
+
+	app := newApp(me)
+
+	run(app)
+
+	<-make(chan struct{}) // wait forever
+}
+
+func newApp(me string) *application {
 	cfg := newConfig(me)
 
 	app := &application{
-		m: newMetrics(cfg.metricsNamespace),
+		cfg: cfg,
+		m:   newMetrics(cfg.metricsNamespace),
 	}
 
 	for _, qc := range cfg.queues {
@@ -98,60 +118,26 @@ func main() {
 		app.queues = append(app.queues, q)
 	}
 
-	go serveHealth(app, cfg.healthAddr, cfg.healthPath)
-
-	go serveMetrics(cfg.metricsAddr, cfg.metricsPath)
-
-	run(app)
-
-	<-make(chan struct{}) // wait forever
-}
-
-func snsClient(sessionName, topicArn, roleArn string) *sns.Client {
-	const me = "snsClient"
-
-	topicRegion, errTopic := getTopicRegion(topicArn)
-	if errTopic != nil {
-		log.Fatalf("%s: topic region error: %v", me, errTopic)
-	}
-
-	awsConfOptions := awsconfig.Options{
-		Region:          topicRegion,
-		RoleArn:         roleArn,
-		RoleSessionName: sessionName,
-	}
-
-	awsConf, errAwsConf := awsconfig.AwsConfig(awsConfOptions)
-	if errAwsConf != nil {
-		log.Fatalf("%s: aws config error: %v", me, errAwsConf)
-	}
-
-	return sns.NewFromConfig(awsConf.AwsConfig)
-}
-
-// arn:aws:sns:us-east-1:123456789012:mytopic
-func getTopicRegion(topicArn string) (string, error) {
-	const me = "getTopicRegion"
-	fields := strings.SplitN(topicArn, ":", 5)
-	if len(fields) < 5 {
-		return "", fmt.Errorf("%s: bad topic arn=[%s]", me, topicArn)
-	}
-	region := fields[3]
-	log.Printf("%s: topicRegion=[%s]", me, region)
-	return region, nil
+	return app
 }
 
 func run(app *application) {
-	for _, q := range app.queues {
 
+	if app.cfg.healthAddr != "" {
+		go serveHealth(app, app.cfg.healthAddr, app.cfg.healthPath)
+	}
+
+	if app.cfg.metricsAddr != "" {
+		go serveMetrics(app.cfg.metricsAddr, app.cfg.metricsPath)
+	}
+
+	for _, q := range app.queues {
 		for i := 1; i <= q.conf.Readers; i++ {
 			go reader(q, i, app.m)
 		}
-
 		for i := 1; i <= q.conf.Writers; i++ {
 			go writer(q, i, app.m)
 		}
-
 	}
 }
 
