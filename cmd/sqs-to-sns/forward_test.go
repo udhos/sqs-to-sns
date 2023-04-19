@@ -64,6 +64,11 @@ func TestForward(t *testing.T) {
 		return mockSns
 	}
 
+	if remain := mockSqs.count(); remain != messageCount {
+		t.Errorf("wrong remaining sqs messsages: expected=%d got=%d",
+			messageCount, remain)
+	}
+
 	//
 	// create and run application
 	//
@@ -97,6 +102,15 @@ func TestForward(t *testing.T) {
 		t.Errorf("wrong sns publishes: expected=%d got=%d",
 			messageCount, pub)
 	}
+
+	//
+	// check that all messages have been deleted
+	//
+
+	if remain := mockSqs.count(); remain != 0 {
+		t.Errorf("wrong remaining sqs messsages: expected=%d got=%d",
+			0, remain)
+	}
 }
 
 type mockSqsMessage struct {
@@ -111,6 +125,12 @@ func (m *mockSqsMessage) visible() bool {
 type mockSqsClient struct {
 	messages map[string]*mockSqsMessage
 	lock     sync.Mutex
+}
+
+func (c *mockSqsClient) count() int {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	return len(c.messages)
 }
 
 func (c *mockSqsClient) ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {

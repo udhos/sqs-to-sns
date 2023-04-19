@@ -20,7 +20,7 @@ import (
 	"github.com/udhos/boilerplate/boilerplate"
 )
 
-const version = "0.10.0"
+const version = "1.0.0"
 
 func getVersion(me string) string {
 	return fmt.Sprintf("%s version=%s runtime=%s boilerplate=%s GOOS=%s GOARCH=%s GOMAXPROCS=%d",
