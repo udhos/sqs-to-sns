@@ -193,6 +193,14 @@ func reader(q *applicationQueue, readerID int, m *metrics) {
 
 		if count == 0 {
 			m.receiveEmpty.WithLabelValues(queueID).Inc()
+			if debug {
+				log.Printf("%s: empty receive, sleeping %v",
+					me, q.conf.EmptyReceiveCooldown)
+			}
+			// this cooldown prevents us from hammering the api on empty receives.
+			// it shouldn't really on live aws api, but it does take place on
+			// simulated apis.
+			time.Sleep(q.conf.EmptyReceiveCooldown)
 			continue
 		}
 

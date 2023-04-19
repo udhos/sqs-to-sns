@@ -2,16 +2,23 @@ package main
 
 import (
 	"context"
-	"errors"
 	"os"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
-func TestQueue(t *testing.T) {
+func TestForward(t *testing.T) {
+
+	//
+	// set application config environment
+	//
 
 	os.Setenv("QUEUES", "testdata/test-queues.yaml")
 
@@ -31,8 +38,35 @@ func TestQueue(t *testing.T) {
 	os.Setenv("READ_ERROR_COOLDOWN", "10s")
 	os.Setenv("WRITE_ERROR_COOLDOWN", "10s")
 	os.Setenv("DELETE_ERROR_COOLDOWN", "10s")
+	os.Setenv("EMPTY_RECEIVE_COOLDOWN", "10s")
 	os.Setenv("COPY_ATTRIBUTES", "true")
 	os.Setenv("DEBUG", "true")
+
+	//
+	// load data into mock sqs
+	//
+
+	const messageCount = 100
+
+	mockSqs := &mockSqsClient{messages: map[string]*mockSqsMessage{}}
+	for i := 0; i < messageCount; i++ {
+		m := strconv.Itoa(i)
+		mockSqs.messages[m] = &mockSqsMessage{body: m}
+	}
+
+	mockSns := &mockSnsClient{}
+
+	newMockSqsClient := func(sessionName, queueURL, roleArn string) sqsClient {
+		return mockSqs
+	}
+
+	newMockSnsClient := func(sessionName, queueURL, roleArn string) snsClient {
+		return mockSns
+	}
+
+	//
+	// create and run application
+	//
 
 	const me = "test-app"
 
@@ -40,33 +74,95 @@ func TestQueue(t *testing.T) {
 
 	run(app)
 
-	time.Sleep(1 * time.Second)
+	//
+	// give application time to handle the messages
+	//
 
-	t.Logf("done")
+	begin := time.Now()
+	for {
+		if time.Since(begin) > 3*time.Second {
+			break
+		}
+		if pub := mockSns.getPublishes(); pub == messageCount {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	//
+	// check that all messages have been published
+	//
+
+	if pub := mockSns.getPublishes(); pub != messageCount {
+		t.Errorf("wrong sns publishes: expected=%d got=%d",
+			messageCount, pub)
+	}
 }
 
-func newMockSqsClient(sessionName, queueURL, roleArn string) sqsClient {
-	return &mockSqsClient{}
+type mockSqsMessage struct {
+	body     string
+	received time.Time
+}
+
+func (m *mockSqsMessage) visible() bool {
+	return time.Since(m.received) > 30*time.Second
 }
 
 type mockSqsClient struct {
+	messages map[string]*mockSqsMessage
+	lock     sync.Mutex
 }
 
 func (c *mockSqsClient) ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
-	return nil, errors.New("recv")
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	out := &sqs.ReceiveMessageOutput{}
+	var count int
+	for k, v := range c.messages {
+		if count >= int(params.MaxNumberOfMessages) {
+			break
+		}
+		if !v.visible() {
+			continue
+		}
+		m := types.Message{
+			Body:          aws.String(v.body),
+			MessageId:     aws.String(k),
+			ReceiptHandle: aws.String(k),
+		}
+		out.Messages = append(out.Messages, m)
+		v.received = time.Now() // make message invisible for 30s
+		count++
+	}
+	return out, nil
 }
 
 func (c *mockSqsClient) DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
-	return nil, errors.New("del")
-}
-
-func newMockSnsClient(sessionName, queueURL, roleArn string) snsClient {
-	return &mockSnsClient{}
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	delete(c.messages, *params.ReceiptHandle)
+	out := &sqs.DeleteMessageOutput{}
+	return out, nil
 }
 
 type mockSnsClient struct {
+	publishes int
+	lock      sync.Mutex
+}
+
+func (c *mockSnsClient) getPublishes() int {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	return c.publishes
 }
 
 func (c *mockSnsClient) Publish(ctx context.Context, params *sns.PublishInput, optFns ...func(*sns.Options)) (*sns.PublishOutput, error) {
-	return nil, errors.New("pub")
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.publishes++
+	id := "mockSnsClient.fake-publish-id"
+	out := &sns.PublishOutput{
+		MessageId: aws.String(id),
+	}
+	return out, nil
 }

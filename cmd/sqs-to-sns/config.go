@@ -15,18 +15,19 @@ type queueConfig struct {
 	ID string `yaml:"id"`
 
 	// per-queue values
-	QueueURL            string        `yaml:"queue_url"`
-	QueueRoleArn        string        `yaml:"queue_role_arn"`
-	TopicArn            string        `yaml:"topic_arn"`
-	TopicRoleArn        string        `yaml:"topic_role_arn"`
-	Readers             int           `yaml:"readers"`
-	Writers             int           `yaml:"writers"`
-	Buffer              int           `yaml:"buffer"`
-	ErrorCooldownRead   time.Duration `yaml:"error_cooldown_read"`
-	ErrorCooldownWrite  time.Duration `yaml:"error_cooldown_write"`
-	ErrorCooldownDelete time.Duration `yaml:"error_cooldown_delete"`
-	CopyAttributes      *bool         `yaml:"copy_attributes"`
-	Debug               *bool         `yaml:"debug"`
+	QueueURL             string        `yaml:"queue_url"`
+	QueueRoleArn         string        `yaml:"queue_role_arn"`
+	TopicArn             string        `yaml:"topic_arn"`
+	TopicRoleArn         string        `yaml:"topic_role_arn"`
+	Readers              int           `yaml:"readers"`
+	Writers              int           `yaml:"writers"`
+	Buffer               int           `yaml:"buffer"`
+	ErrorCooldownRead    time.Duration `yaml:"error_cooldown_read"`
+	ErrorCooldownWrite   time.Duration `yaml:"error_cooldown_write"`
+	ErrorCooldownDelete  time.Duration `yaml:"error_cooldown_delete"`
+	EmptyReceiveCooldown time.Duration `yaml:"empty_receive_cooldown"`
+	CopyAttributes       *bool         `yaml:"copy_attributes"`
+	Debug                *bool         `yaml:"debug"`
 }
 
 type config struct {
@@ -41,16 +42,17 @@ type config struct {
 	metricsNamespace string
 
 	// default values
-	queueRoleArn        string
-	topicRoleArn        string
-	readers             int
-	writers             int
-	buffer              int
-	errorCooldownRead   time.Duration
-	errorCooldownWrite  time.Duration
-	errorCooldownDelete time.Duration
-	copyAttributes      bool
-	debug               bool
+	queueRoleArn         string
+	topicRoleArn         string
+	readers              int
+	writers              int
+	buffer               int
+	errorCooldownRead    time.Duration
+	errorCooldownWrite   time.Duration
+	errorCooldownDelete  time.Duration
+	emptyReceiveCooldown time.Duration
+	copyAttributes       bool
+	debug                bool
 }
 
 func newConfig(me string) config {
@@ -69,16 +71,17 @@ func newConfig(me string) config {
 		metricsNamespace: env.String("METRICS_NAMESPACE", "sqstosns"),
 
 		// default values
-		queueRoleArn:        env.String("QUEUE_ROLE_ARN", ""),
-		topicRoleArn:        env.String("TOPIC_ROLE_ARN", ""),
-		readers:             env.Int("READERS", 1),
-		writers:             env.Int("WRITERS", 1),
-		buffer:              env.Int("BUFFER", 10),
-		errorCooldownRead:   env.Duration("READ_ERROR_COOLDOWN", 10*time.Second),
-		errorCooldownWrite:  env.Duration("WRITE_ERROR_COOLDOWN", 10*time.Second),
-		errorCooldownDelete: env.Duration("DELETE_ERROR_COOLDOWN", 10*time.Second),
-		copyAttributes:      env.Bool("COPY_ATTRIBUTES", true),
-		debug:               env.Bool("DEBUG", true),
+		queueRoleArn:         env.String("QUEUE_ROLE_ARN", ""),
+		topicRoleArn:         env.String("TOPIC_ROLE_ARN", ""),
+		readers:              env.Int("READERS", 1),
+		writers:              env.Int("WRITERS", 1),
+		buffer:               env.Int("BUFFER", 10),
+		errorCooldownRead:    env.Duration("READ_ERROR_COOLDOWN", 10*time.Second),
+		errorCooldownWrite:   env.Duration("WRITE_ERROR_COOLDOWN", 10*time.Second),
+		errorCooldownDelete:  env.Duration("DELETE_ERROR_COOLDOWN", 10*time.Second),
+		emptyReceiveCooldown: env.Duration("EMPTY_RECEIVE_COOLDOWN", 10*time.Second),
+		copyAttributes:       env.Bool("COPY_ATTRIBUTES", true),
+		debug:                env.Bool("DEBUG", true),
 	}
 
 	cfg.queues = loadQueueConf(cfg)
@@ -153,6 +156,9 @@ func queueDefaults(q queueConfig, cfg config) queueConfig {
 	}
 	if q.ErrorCooldownDelete == 0 {
 		q.ErrorCooldownDelete = cfg.errorCooldownDelete
+	}
+	if q.EmptyReceiveCooldown == 0 {
+		q.EmptyReceiveCooldown = cfg.emptyReceiveCooldown
 	}
 	if q.CopyAttributes == nil {
 		b := cfg.copyAttributes
