@@ -94,12 +94,13 @@ func newMetrics(namespace string) *metrics {
 	// latency
 	//
 
-	latency := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      latencyName,
-		Help:      "How long it took to fully process the delivery, partitioned by queue.",
-		Buckets:   []float64{0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0},
-	},
+	latency := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: namespace,
+			Name:      latencyName,
+			Help:      "How long it took to fully process the delivery, partitioned by queue.",
+			Buckets:   []float64{0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0},
+		},
 		[]string{"queue"},
 	)
 
