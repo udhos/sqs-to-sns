@@ -137,9 +137,8 @@ func (c *mockSqsClient) ReceiveMessage(ctx context.Context, params *sqs.ReceiveM
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	out := &sqs.ReceiveMessageOutput{}
-	var count int
 	for k, v := range c.messages {
-		if count >= int(params.MaxNumberOfMessages) {
+		if len(out.Messages) >= int(params.MaxNumberOfMessages) {
 			break
 		}
 		if !v.visible() {
@@ -152,7 +151,6 @@ func (c *mockSqsClient) ReceiveMessage(ctx context.Context, params *sqs.ReceiveM
 		}
 		out.Messages = append(out.Messages, m)
 		v.received = time.Now() // make message invisible for 30s
-		count++
 	}
 	return out, nil
 }
