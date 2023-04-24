@@ -99,7 +99,7 @@ func main() {
 	<-make(chan struct{}) // wait forever
 }
 
-func newApp(me string, newSqsClient newSqsClientFunc, newSnsClient newSnsClientFunc) *application {
+func newApp(me string, createSqsClient newSqsClientFunc, createSnsClient newSnsClientFunc) *application {
 	cfg := newConfig(me)
 
 	app := &application{
@@ -111,8 +111,8 @@ func newApp(me string, newSqsClient newSqsClientFunc, newSnsClient newSnsClientF
 		q := &applicationQueue{
 			conf: qc,
 			ch:   make(chan message, qc.Buffer),
-			sqs:  newSqsClient(me, qc.QueueURL, qc.QueueRoleArn),
-			sns:  newSnsClient(me, qc.TopicArn, qc.TopicRoleArn),
+			sqs:  createSqsClient(me, qc.QueueURL, qc.QueueRoleArn),
+			sns:  createSnsClient(me, qc.TopicArn, qc.TopicRoleArn),
 		}
 		app.queues = append(app.queues, q)
 	}
