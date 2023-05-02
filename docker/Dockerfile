@@ -23,7 +23,7 @@ RUN go build -o /tmp/sqs-to-sns github.com/udhos/sqs-to-sns/cmd/sqs-to-sns
 #
 FROM alpine:3.17.3
 COPY --from=builder /tmp/sqs-to-sns /bin/sqs-to-sns
-RUN apk add curl=8.0.1-r0
+RUN apk add curl=8.0.1-r0 libcrypto3=3.0.8-r4 libssl3=3.0.8-r4
 RUN adduser -D -g '' user
 USER user
 ENTRYPOINT ["/bin/sqs-to-sns"]
