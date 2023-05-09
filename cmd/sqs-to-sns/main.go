@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"time"
 
@@ -20,12 +19,7 @@ import (
 	"github.com/udhos/boilerplate/boilerplate"
 )
 
-const version = "1.1.2"
-
-func getVersion(me string) string {
-	return fmt.Sprintf("%s version=%s runtime=%s boilerplate=%s GOOS=%s GOARCH=%s GOMAXPROCS=%d",
-		me, version, runtime.Version(), boilerplate.Version(), runtime.GOOS, runtime.GOARCH, runtime.GOMAXPROCS(0))
-}
+const version = "1.2.0"
 
 type applicationQueue struct {
 	conf         queueConfig
@@ -79,10 +73,9 @@ func main() {
 	me := filepath.Base(os.Args[0])
 
 	{
-		v := getVersion(me)
+		v := boilerplate.LongVersion(me + " version=" + version)
 		if showVersion {
-			fmt.Print(v)
-			fmt.Println()
+			fmt.Println(v)
 			return
 		}
 		log.Print(v)

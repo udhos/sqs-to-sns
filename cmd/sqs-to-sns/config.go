@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/udhos/boilerplate/envconfig"
-	"github.com/udhos/boilerplate/secret"
 	"gopkg.in/yaml.v2"
 )
 
@@ -57,7 +56,7 @@ type config struct {
 
 func newConfig(me string) config {
 
-	env := getEnv(me)
+	env := envconfig.NewSimple(me)
 
 	cfg := config{
 		// per-queue values
@@ -87,23 +86,6 @@ func newConfig(me string) config {
 	cfg.queues = loadQueueConf(cfg)
 
 	return cfg
-}
-
-func getEnv(me string) *envconfig.Env {
-	roleArn := os.Getenv("SECRET_ROLE_ARN")
-
-	log.Printf("SECRET_ROLE_ARN='%s'", roleArn)
-
-	secretOptions := secret.Options{
-		RoleSessionName: me,
-		RoleArn:         roleArn,
-	}
-	secret := secret.New(secretOptions)
-	envOptions := envconfig.Options{
-		Secret: secret,
-	}
-	env := envconfig.New(envOptions)
-	return env
 }
 
 func loadQueueConf(cfg config) []queueConfig {

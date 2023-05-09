@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/udhos/boilerplate/boilerplate"
 	"github.com/udhos/sqs-to-sns/sqsclient"
 )
 
@@ -26,11 +26,6 @@ type config struct {
 }
 
 const version = "0.1.0"
-
-func getVersion(me string) string {
-	return fmt.Sprintf("%s version=%s runtime=%s GOOS=%s GOARCH=%s GOMAXPROCS=%d",
-		me, version, runtime.Version(), runtime.GOOS, runtime.GOARCH, runtime.GOMAXPROCS(0))
-}
 
 const batch = 10
 
@@ -52,10 +47,9 @@ func main() {
 	flag.Parse()
 
 	{
-		v := getVersion(me)
+		v := boilerplate.LongVersion(me + " version=" + version)
 		if showVersion {
-			fmt.Print(v)
-			fmt.Println()
+			fmt.Println(v)
 			return
 		}
 		log.Print(v)
