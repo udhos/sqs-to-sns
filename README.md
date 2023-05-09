@@ -74,8 +74,8 @@ export QUEUE_ROLE_ARN=arn:aws:iam::111111111111:role/sqs_consumer
 export TOPIC_ROLE_ARN=arn:aws:iam::222222222222:role/sns_producer
 
 export READERS=1                  ;# number of goroutines reading from SQS queue
-export WRITERS=1                  ;# number of goroutines writing to SNS topic
-export BUFFER=10                  ;# buffer size between readers and writers
+export WRITERS=10                 ;# number of goroutines writing to SNS topic (recommended: 10 * READERS)
+export BUFFER=20                  ;# buffer size between readers and writers (recommended: 20 * READERS)
 export READ_ERROR_COOLDOWN=10s    ;# cooldown holdtime after read errors
 export WRITE_ERROR_COOLDOWN=10s   ;# cooldown holdtime after write errors
 export DELETE_ERROR_COOLDOWN=10s  ;# cooldown holdtime after delete errors
@@ -100,8 +100,8 @@ $ cat queues.yaml
   #queue_role_arn: arn:aws:iam::111111111111:role/sqs_consumer1
   #topic_role_arn: arn:aws:iam::222222222222:role/sns_producer1
   #readers: 1
-  #writers: 1
-  #buffer: 10
+  #writers: 10 # recommended: 10*readers
+  #buffer: 20  # recommended: 20*readers
   #error_cooldown_read: 10s
   #error_cooldown_write: 10s
   #error_cooldown_delete: 10s
@@ -120,8 +120,8 @@ $ cat queues.yaml
   #queue_role_arn: arn:aws:iam::111111111111:role/sqs_consumer2
   #topic_role_arn: arn:aws:iam::222222222222:role/sns_producer2
   #readers: 1
-  #writers: 1
-  #buffer: 10
+  #writers: 10 # recommended: 10*readers
+  #buffer: 20  # recommended: 20*readers
   #error_cooldown_read: 10s
   #error_cooldown_write: 10s
   #error_cooldown_delete: 10s
