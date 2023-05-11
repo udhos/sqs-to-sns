@@ -34,6 +34,10 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
+# add custom labels to deployment pods
+customLabels:
+  app: sqs-to-sns
+
 podAnnotations:
   prometheus.io/path: /metrics
   prometheus.io/port: "3000"
@@ -121,11 +125,11 @@ configDir:
 resources:
   requests:
     cpu: 300m
-    memory: 40Mi
+    memory: 100Mi
     ephemeral-storage: 100Mi
   limits:
     cpu: 2000m
-    memory: 50Mi
+    memory: 100Mi
     ephemeral-storage: 200Mi
 
 autoscaling:
