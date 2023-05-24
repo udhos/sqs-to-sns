@@ -8,6 +8,7 @@
 
 sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues to AWS SNS Topics.
 
+* [Features](#features)
 * [Build and run](#build-and-run)
 * [Configuration](#configuration)
   * [Env vars](#env-vars)
@@ -15,7 +16,6 @@ sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues t
   * [Roles](#roles)
 * [Prometheus Metrics](#prometheus-metrics)
 * [Utility to populate SQS queue](#utility-to-populate-sqs-queue)
-* [TODO](#todo)
 * [Docker](#docker)
 * [Helm chart](#helm-chart)
   * [Using the repository](#using-the-repository)
@@ -29,6 +29,18 @@ sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues t
   * [Uninstall](#uninstall)
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
+
+# Features
+
+* The configuration file can specify multiple queue-to-topic mappings.
+* Messages attributes can be copied from queue to topic.
+* Metrics are exposed in a Prometheus endpoint.
+* A health check endpoint is exposed.
+* Docker images are provided at https://hub.docker.com/r/udhos/forward.
+* Helm charts are provided at https://udhos.github.io/forward/.
+* The deployment provided in the helm chart is designed to scale automatically with a CPU-base HPA.
+* Benchmarking in an m5a.2xlarge EKS worker node instance delivered about 1 req/s per mili-CPU. That means a single POD running with the default helm chart configuration (sized at 300 mili-CPU resource request) would forward up to 300 messages/s before scaling up. Then every additional auto-scaled POD would add extra 300 messages/s forwarding capacity.
+* Default HPA configuration provided in the helm chart would scale up many replicas very quickly based on CPU load, if there are many SQS messages to forward. If you have huge queues to forward but cannot afford scaling up many POD replicas, make sure to fine tune the HPA max replicas limit.
 
 # Build and run
 
@@ -180,17 +192,6 @@ batch-sqs -queueURL https://sqs.us-east-1.amazonaws.com/111111111111/queue_name
 
 2023/04/17 00:27:04 batch-sqs: sent=10000 interval=9.275251836s rate=1111.111111111111 messages/sec
 ```
-
-# TODO
-
-- [X] Forward messages.
-- [X] Docker image.
-- [X] Message attributes.
-- [X] Helm chart.
-- [X] Multiple queues.
-- [X] Metrics.
-- [X] Health check.
-- [X] Tests.
 
 # Docker
 
