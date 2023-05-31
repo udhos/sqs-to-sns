@@ -36,9 +36,10 @@ type config struct {
 	healthAddr string
 	healthPath string
 
-	metricsAddr      string
-	metricsPath      string
-	metricsNamespace string
+	metricsAddr           string
+	metricsPath           string
+	metricsNamespace      string
+	metricsBucketsLatency []float64
 
 	// default values
 	queueRoleArn         string
@@ -65,9 +66,10 @@ func newConfig(me string) config {
 		healthAddr: env.String("HEALTH_ADDR", ":8888"),
 		healthPath: env.String("HEALTH_PATH", "/health"),
 
-		metricsAddr:      env.String("METRICS_ADDR", ":3000"),
-		metricsPath:      env.String("METRICS_PATH", "/metrics"),
-		metricsNamespace: env.String("METRICS_NAMESPACE", "sqstosns"),
+		metricsAddr:           env.String("METRICS_ADDR", ":3000"),
+		metricsPath:           env.String("METRICS_PATH", "/metrics"),
+		metricsNamespace:      env.String("METRICS_NAMESPACE", "sqstosns"),
+		metricsBucketsLatency: env.Float64Slice("METRICS_BUCKETS_LATENCY", []float64{0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0}),
 
 		// default values
 		queueRoleArn:         env.String("QUEUE_ROLE_ARN", ""),

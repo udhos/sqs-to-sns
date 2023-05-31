@@ -19,7 +19,7 @@ import (
 	"github.com/udhos/boilerplate/boilerplate"
 )
 
-const version = "1.3.0"
+const version = "1.4.0"
 
 type applicationQueue struct {
 	conf         queueConfig
@@ -97,7 +97,7 @@ func newApp(me string, createSqsClient newSqsClientFunc, createSnsClient newSnsC
 
 	app := &application{
 		cfg: cfg,
-		m:   newMetrics(cfg.metricsNamespace),
+		m:   newMetrics(cfg.metricsNamespace, cfg.metricsBucketsLatency),
 	}
 
 	for _, qc := range cfg.queues {

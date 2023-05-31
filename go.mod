@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sns v1.20.8
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.20.8
 	github.com/prometheus/client_golang v1.15.0
-	github.com/udhos/boilerplate v1.0.1
+	github.com/udhos/boilerplate v1.1.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

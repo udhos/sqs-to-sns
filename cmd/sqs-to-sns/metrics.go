@@ -70,7 +70,7 @@ func newCounter(namespace, name, desc string) *prometheus.CounterVec {
 	return c
 }
 
-func newMetrics(namespace string) *metrics {
+func newMetrics(namespace string, latencyBuckets []float64) *metrics {
 	const me = "newMetrics"
 
 	//
@@ -99,7 +99,7 @@ func newMetrics(namespace string) *metrics {
 			Namespace: namespace,
 			Name:      latencyName,
 			Help:      "How long it took to fully process the delivery, partitioned by queue.",
-			Buckets:   []float64{0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0},
+			Buckets:   latencyBuckets,
 		},
 		[]string{"queue"},
 	)
