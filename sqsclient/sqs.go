@@ -11,7 +11,7 @@ import (
 )
 
 // NewClient creates an SQS client.
-func NewClient(sessionName, queueURL, roleArn string) *sqs.Client {
+func NewClient(sessionName, queueURL, roleArn, endpointURL string) *sqs.Client {
 	const me = "sqsClient"
 
 	queueRegion, errQueue := getQueueRegion(queueURL)
@@ -23,6 +23,7 @@ func NewClient(sessionName, queueURL, roleArn string) *sqs.Client {
 		Region:          queueRegion,
 		RoleArn:         roleArn,
 		RoleSessionName: sessionName,
+		EndpointURL:     endpointURL,
 	}
 
 	awsConfSqs, errAwsConf := awsconfig.AwsConfig(awsConfOptions)

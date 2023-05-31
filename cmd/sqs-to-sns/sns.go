@@ -14,13 +14,13 @@ type snsClient interface {
 	Publish(ctx context.Context, params *sns.PublishInput, optFns ...func(*sns.Options)) (*sns.PublishOutput, error)
 }
 
-func newSnsClient(sessionName, topicArn, roleArn string) snsClient {
-	return newSnsClientAws(sessionName, topicArn, roleArn) // create real sns client
+func newSnsClient(sessionName, topicArn, roleArn, endpointURL string) snsClient {
+	return newSnsClientAws(sessionName, topicArn, roleArn, endpointURL) // create real sns client
 }
 
-type newSnsClientFunc func(sessionName, topicArn, roleArn string) snsClient
+type newSnsClientFunc func(sessionName, topicArn, roleArn, endpointURL string) snsClient
 
-func newSnsClientAws(sessionName, topicArn, roleArn string) *sns.Client {
+func newSnsClientAws(sessionName, topicArn, roleArn, endpointURL string) *sns.Client {
 	const me = "snsClient"
 
 	topicRegion, errTopic := getTopicRegion(topicArn)
@@ -32,6 +32,7 @@ func newSnsClientAws(sessionName, topicArn, roleArn string) *sns.Client {
 		Region:          topicRegion,
 		RoleArn:         roleArn,
 		RoleSessionName: sessionName,
+		EndpointURL:     endpointURL,
 	}
 
 	awsConf, errAwsConf := awsconfig.AwsConfig(awsConfOptions)

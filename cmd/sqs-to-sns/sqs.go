@@ -12,8 +12,8 @@ type sqsClient interface {
 	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
 }
 
-func newSqsClient(sessionName, queueURL, roleArn string) sqsClient {
-	return sqsclient.NewClient(sessionName, queueURL, roleArn) // create real sqs client
+func newSqsClient(sessionName, queueURL, roleArn, endpointURL string) sqsClient {
+	return sqsclient.NewClient(sessionName, queueURL, roleArn, endpointURL) // create real sqs client
 }
 
-type newSqsClientFunc func(sessionName, queueURL, roleArn string) sqsClient
+type newSqsClientFunc func(sessionName, queueURL, roleArn, endpointURL string) sqsClient

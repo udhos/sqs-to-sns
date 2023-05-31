@@ -19,7 +19,7 @@ import (
 	"github.com/udhos/boilerplate/boilerplate"
 )
 
-const version = "1.4.0"
+const version = "1.5.0"
 
 type applicationQueue struct {
 	conf         queueConfig
@@ -104,8 +104,8 @@ func newApp(me string, createSqsClient newSqsClientFunc, createSnsClient newSnsC
 		q := &applicationQueue{
 			conf: qc,
 			ch:   make(chan message, qc.Buffer),
-			sqs:  createSqsClient(me, qc.QueueURL, qc.QueueRoleArn),
-			sns:  createSnsClient(me, qc.TopicArn, qc.TopicRoleArn),
+			sqs:  createSqsClient(me, qc.QueueURL, qc.QueueRoleArn, cfg.endpointURL),
+			sns:  createSnsClient(me, qc.TopicArn, qc.TopicRoleArn, cfg.endpointURL),
 		}
 		app.queues = append(app.queues, q)
 	}

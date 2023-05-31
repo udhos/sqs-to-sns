@@ -1,0 +1,3 @@
+- id: q1
+  queue_url: http://us-east-1.goaws.com:4100/100010001000/test1
+  topic_arn: arn:aws:sns:us-east-1:100010001000:test1

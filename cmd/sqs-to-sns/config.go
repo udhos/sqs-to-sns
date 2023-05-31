@@ -30,6 +30,8 @@ type queueConfig struct {
 }
 
 type config struct {
+	endpointURL string
+
 	queueListFile string
 	queues        []queueConfig
 
@@ -60,6 +62,9 @@ func newConfig(me string) config {
 	env := envconfig.NewSimple(me)
 
 	cfg := config{
+
+		endpointURL: env.String("ENDPOINT_URL", ""),
+
 		// per-queue values
 		queueListFile: env.String("QUEUES", "queues.yaml"),
 

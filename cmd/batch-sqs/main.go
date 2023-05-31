@@ -20,9 +20,10 @@ import (
 )
 
 type config struct {
-	queueURL string
-	roleArn  string
-	wg       sync.WaitGroup
+	queueURL    string
+	roleArn     string
+	endpointURL string
+	wg          sync.WaitGroup
 }
 
 const version = "0.1.0"
@@ -43,6 +44,7 @@ func main() {
 	flag.IntVar(&writers, "writers", 30, "number of concurrent writers")
 	flag.StringVar(&conf.queueURL, "queueURL", "", "required queue URL")
 	flag.StringVar(&conf.roleArn, "roleArn", "", "optional role ARN")
+	flag.StringVar(&conf.endpointURL, "endpointURL", "", "optional endpoint URL")
 	flag.BoolVar(&showVersion, "version", showVersion, "show version")
 	flag.Parse()
 
@@ -96,7 +98,7 @@ func writer(id, total int, conf *config, count int, messages []types.SendMessage
 
 	const cooldown = 5 * time.Second
 
-	sqsClient := sqsclient.NewClient(me, conf.queueURL, conf.roleArn)
+	sqsClient := sqsclient.NewClient(me, conf.queueURL, conf.roleArn, conf.endpointURL)
 
 	for sent := 0; sent < count; {
 		input := &sqs.SendMessageBatchInput{

@@ -56,11 +56,11 @@ func TestForward(t *testing.T) {
 
 	mockSns := &mockSnsClient{}
 
-	newMockSqsClient := func(sessionName, queueURL, roleArn string) sqsClient {
+	newMockSqsClient := func(sessionName, queueURL, roleArn, endpointURL string) sqsClient {
 		return mockSqs
 	}
 
-	newMockSnsClient := func(sessionName, queueURL, roleArn string) snsClient {
+	newMockSnsClient := func(sessionName, queueURL, roleArn, endpointURL string) snsClient {
 		return mockSns
 	}
 
