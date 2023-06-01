@@ -36,8 +36,8 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 * Messages attributes can be copied from queue to topic.
 * Metrics are exposed in a Prometheus endpoint.
 * A health check endpoint is exposed.
-* Docker images are provided at https://hub.docker.com/r/udhos/forward.
-* Helm charts are provided at https://udhos.github.io/forward/.
+* Docker images are provided at https://hub.docker.com/r/udhos/sqs-to-sns.
+* Helm charts are provided at https://udhos.github.io/sqs-to-sns/.
 * The deployment provided in the helm chart is designed to scale automatically with a CPU-base HPA.
 * Benchmarking in an m5a.2xlarge EKS worker node instance delivered about 1 req/s per mili-CPU. That means a single POD running with the default helm chart configuration (sized at 300 mili-CPU resource request) would forward up to 300 messages/s before scaling up. Then every additional auto-scaled POD would add extra 300 messages/s forwarding capacity.
 * Default HPA configuration provided in the helm chart would scale up many replicas very quickly based on CPU load, if there are many SQS messages to forward. If you have huge queues to forward but cannot afford scaling up many POD replicas, make sure to fine tune the HPA max replicas limit.
