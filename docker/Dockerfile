@@ -1,6 +1,6 @@
 # STEP 1 build executable binary
 
-FROM golang:1.20.4-alpine3.17 as builder
+FROM golang:1.20.5-alpine3.18 as builder
 
 RUN apk update
 RUN apk add git
@@ -21,9 +21,9 @@ RUN go build -o /tmp/sqs-to-sns github.com/udhos/sqs-to-sns/cmd/sqs-to-sns
 #
 # curl: https://security.alpinelinux.org/srcpkg/curl
 #
-FROM alpine:3.17.3
+FROM alpine:3.18.0
 COPY --from=builder /tmp/sqs-to-sns /bin/sqs-to-sns
-RUN apk add curl=8.1.2-r0 libcrypto3=3.0.8-r3 libssl3=3.0.8-r3
+RUN apk add curl=8.1.2-r0 libcrypto3=3.1.0-r4 libssl3=3.1.0-r4
 RUN adduser -D -g '' user
 USER user
 ENTRYPOINT ["/bin/sqs-to-sns"]

@@ -19,7 +19,7 @@ import (
 	"github.com/udhos/boilerplate/boilerplate"
 )
 
-const version = "1.5.1"
+const version = "1.5.2"
 
 type applicationQueue struct {
 	conf         queueConfig
