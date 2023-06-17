@@ -33,8 +33,11 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 # Features
 
 * It is a cloud-native tool designed to run on Kubernetes, but can be also deployed as a standalone daemon.
+* Deployment is easy and flexible since it is provided as a static binary and as docker image.
 * It is resilient against loss of message by taking advantage of SQS features. It does not use or depend on any other persistent storage.
 * The configuration file is declarative and can specify multiple queue-to-topic mappings in YAML format.
+* Messages can be moved both across different aws regions and across distinct aws accounts.
+* Standard aws credentials are supported, including static iam users, EC2 instance profiles and iam roles.
 * Messages attributes can be copied from queue to topic.
 * Metrics are exposed in a Prometheus endpoint.
 * A health check endpoint is exposed.
