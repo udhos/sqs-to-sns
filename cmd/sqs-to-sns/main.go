@@ -19,7 +19,7 @@ import (
 	"github.com/udhos/boilerplate/boilerplate"
 )
 
-const version = "1.5.3"
+const version = "1.5.4"
 
 type applicationQueue struct {
 	conf         queueConfig
@@ -35,7 +35,6 @@ func (q *applicationQueue) putStatus(status error) {
 	q.lock.Lock()
 	q.healthStatus = h
 	q.lock.Unlock()
-	//log.Printf("putStatus: %s %v", q.conf.ID, h)
 }
 
 func (q *applicationQueue) getStatus() health {
