@@ -26,6 +26,11 @@ spec:
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+      labels:
+        {{- include "sqs-to-sns.selectorLabels" . | nindent 8 }}
+        {{- if .Values.customLabels }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.customLabels "context" $ ) | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
