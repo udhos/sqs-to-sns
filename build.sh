@@ -10,10 +10,12 @@ go mod tidy
 
 govulncheck ./...
 
-export CGO_ENABLED=1
+go -w CGO_ENABLED=1
 
 go test -race ./...
 
-export CGO_ENABLED=0
+go -w CGO_ENABLED=0
 
 go install ./...
+
+go -u CGO_ENABLED

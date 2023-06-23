@@ -13,14 +13,18 @@ spec:
       {{- include "sqs-to-sns.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
+      {{- if or .Values.podAnnotations (or (eq .Values.redeploy "always") (eq .Values.redeploy "reconfig")) }}
       annotations:
-        {{- toYaml . | nindent 8 }}
       {{- end }}
-      labels:
-        {{- include "sqs-to-sns.selectorLabels" . | nindent 8 }}
-        {{- if .Values.customLabels }}
-        {{- include "common.tplvalues.render" ( dict "value" .Values.customLabels "context" $ ) | nindent 8 }}
+        {{- if eq .Values.redeploy "always" }}
+        rollme: {{ randAlphaNum 5 | quote }}
+        {{- end }}
+        {{- if eq .Values.redeploy "reconfig" }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}

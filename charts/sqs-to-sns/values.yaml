@@ -38,6 +38,18 @@ securityContext: {}
 customLabels:
   app: sqs-to-sns
 
+# redeploy:
+#
+# 'always': adds a random annotation to Deployment in
+#           order to redeploy the pods whenever the chart is reapplied.
+#
+# 'reconfig': adds annotations with checksums of configurations in
+#             order to redeploy the pods whenever configuration is changed.
+#
+# https://v3.helm.sh/docs/howto/charts_tips_and_tricks/#automatically-roll-deployments
+#
+redeploy: always
+
 podAnnotations:
   prometheus.io/path: /metrics
   prometheus.io/port: "3000"
