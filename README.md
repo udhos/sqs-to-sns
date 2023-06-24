@@ -32,6 +32,7 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 
 # Features
 
+* sqs-to-sns reliably and efficiently moves messages from SQS queues to SNS topics. When deployed with default provided helm chart, it is tuned to scale up quickly in order to catch up with huge burts of incoming messages.
 * It is a cloud-native tool designed to run on Kubernetes with automatic elastic escalability. But can also be deployed as a standalone daemon.
 * Deployment is easy and flexible since it is provided as a static binary and as docker image.
 * It is resilient against loss of messages by taking advantage of SQS features, providing at-least-once delivery guarantee. It does not use or depend on any other persistent storage.
