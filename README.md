@@ -39,8 +39,8 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 * Messages can be moved both across different aws regions and across distinct aws accounts.
 * Standard aws credentials are supported, including static iam users, EC2 instance profiles and iam roles.
 * Messages attributes can be copied from queue to topic.
-* Metrics are exposed in a Prometheus endpoint.
-* A health check endpoint is exposed.
+* Metrics are exposed in a Prometheus endpoint, providing simple and easy monitoring and alerting, with rich metrics including volume, errors and latency.
+* A health check endpoint is exposed, handy for kubernetes probes, facilitating auto-repair for high resilience and availability.
 * Docker images are provided at https://hub.docker.com/r/udhos/sqs-to-sns.
 * Helm charts are provided at https://udhos.github.io/sqs-to-sns/.
 * The deployment provided in the helm chart is designed to scale automatically with a CPU-based HPA.
