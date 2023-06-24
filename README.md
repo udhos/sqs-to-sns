@@ -42,6 +42,7 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 * Messages attributes can be copied from queue to topic.
 * Metrics are exposed in a Prometheus endpoint, providing simple and easy monitoring and alerting, with rich metrics including volume, errors and latency.
 * A health check endpoint is exposed, handy for kubernetes probes, facilitating auto-repair for high resilience and availability.
+* Find prebuilt static executable binary files in the releases page: https://github.com/udhos/sqs-to-sns/releases
 * Docker images are provided at https://hub.docker.com/r/udhos/sqs-to-sns.
 * Helm charts are provided at https://udhos.github.io/sqs-to-sns/.
 * The deployment provided in the helm chart is designed to scale automatically with a CPU-based HPA.
