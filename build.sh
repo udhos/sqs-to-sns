@@ -10,12 +10,12 @@ go mod tidy
 
 govulncheck ./...
 
-go -w CGO_ENABLED=1
+go env -w CGO_ENABLED=1
 
 go test -race ./...
 
-go -w CGO_ENABLED=0
+go env -w CGO_ENABLED=0
 
 go install ./...
 
-go -u CGO_ENABLED
+go env -u CGO_ENABLED
