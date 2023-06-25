@@ -134,12 +134,22 @@ func main() {
 	<-make(chan struct{}) // wait forever
 }
 
+type bogusTracer struct{}
+
+func (t *bogusTracer) Start(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	return ctx, trace.SpanFromContext(ctx)
+}
+
 func newApp(me string, createSqsClient newSqsClientFunc, createSnsClient newSnsClientFunc) *application {
 	cfg := newConfig(me)
 
 	app := &application{
 		cfg: cfg,
 		m:   newMetrics(cfg.metricsNamespace, cfg.metricsBucketsLatency),
+
+		// this bogus tracer will be replaced by actual tracer in main().
+		// we assign this bogus tracer here just to prevents crashes when testing.
+		tracer: &bogusTracer{},
 	}
 
 	for _, qc := range cfg.queues {
