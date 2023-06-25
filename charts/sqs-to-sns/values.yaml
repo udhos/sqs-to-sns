@@ -66,6 +66,12 @@ podHealthCheck:
 configMapProperties:
   QUEUES: /etc/sqs-to-sns/queues.yaml
   #
+  # tracing
+  #
+  JAEGER_URL: http://jaeger-collector:14268/api/traces
+  OTEL_TRACES_SAMPLER: parentbased_traceidratio
+  OTEL_TRACES_SAMPLER_ARG: "0.01"
+  #
   # health checks (use for livenessProbe only, not for readinessProbe)
   #
   HEALTH_ADDR: :8888

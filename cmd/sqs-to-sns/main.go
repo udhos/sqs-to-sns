@@ -17,9 +17,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/udhos/boilerplate/boilerplate"
+	"github.com/udhos/opentelemetry-trace-sqs/otelsns"
+	"github.com/udhos/opentelemetry-trace-sqs/otelsqs"
+	"github.com/udhos/sqs-to-sns/cmd/sqs-to-sns/internal/tracing"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
-const version = "1.5.4"
+const version = "1.6.0"
 
 type applicationQueue struct {
 	conf         queueConfig
@@ -53,6 +59,7 @@ type application struct {
 	cfg    config
 	queues []*applicationQueue
 	m      *metrics
+	tracer trace.Tracer
 }
 
 func main() {
@@ -81,10 +88,46 @@ func main() {
 	}
 
 	//
-	// create and run application
+	// create application
 	//
 
 	app := newApp(me, newSqsClient, newSnsClient)
+
+	//
+	// initialize tracing
+	//
+
+	{
+		tp, errTracer := tracing.TracerProvider(me, app.cfg.jaegerURL)
+		if errTracer != nil {
+			log.Fatalf("tracer provider: %v", errTracer)
+		}
+
+		// Register our TracerProvider as the global so any imported
+		// instrumentation in the future will default to using it.
+		otel.SetTracerProvider(tp)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// Cleanly shutdown and flush telemetry when the application exits.
+		defer func(ctx context.Context) {
+			// Do not make the application hang when it is shutdown.
+			ctx, cancel = context.WithTimeout(ctx, time.Second*5)
+			defer cancel()
+			if err := tp.Shutdown(ctx); err != nil {
+				log.Fatalf("trace shutdown: %v", err)
+			}
+		}(ctx)
+
+		tracing.TracePropagation()
+
+		app.tracer = tp.Tracer(fmt.Sprintf("%s-main", me))
+	}
+
+	//
+	// run application
+	//
 
 	run(app)
 
@@ -127,7 +170,7 @@ func run(app *application) {
 			go reader(q, i, app.m)
 		}
 		for i := 1; i <= q.conf.Writers; i++ {
-			go writer(q, i, app.m)
+			go writer(q, i, app.m, app.tracer)
 		}
 	}
 }
@@ -209,11 +252,9 @@ func reader(q *applicationQueue, readerID int, m *metrics) {
 
 }
 
-func writer(q *applicationQueue, writerID int, metric *metrics) {
+func writer(q *applicationQueue, writerID int, metric *metrics, tracer trace.Tracer) {
 
 	debug := *q.conf.Debug
-	copyAttributes := *q.conf.CopyAttributes
-
 	queueID := q.conf.ID
 
 	me := fmt.Sprintf("writer %s[%d/%d]", queueID, writerID, q.conf.Writers)
@@ -229,84 +270,141 @@ func writer(q *applicationQueue, writerID int, metric *metrics) {
 
 		sqsMsg := <-q.ch
 		metric.buffer.WithLabelValues(queueID).Dec()
-		m := sqsMsg.sqs
+		//m := sqsMsg.sqs
 
-		if debug {
-			log.Printf("%s: MessageId: %s: Attributes:%v", me, *m.MessageId, toJSON(m.Attributes))
-			log.Printf("%s: MessageId: %s: MessageAttributes:%v", me, *m.MessageId, toJSON(m.MessageAttributes))
-			log.Printf("%s: MessageId: %s: Body:%v", me, *m.MessageId, *m.Body)
-		}
-
-		//
-		// publish message to sns topic
-		//
-
-		input := &sns.PublishInput{
-			Message:  m.Body,
-			TopicArn: aws.String(q.conf.TopicArn),
-		}
-
-		if copyAttributes {
-			//
-			// copy attributes from SQS to SNS
-			//
-			attr := map[string]sns_types.MessageAttributeValue{}
-			for k, v := range m.MessageAttributes {
-				attr[k] = sns_types.MessageAttributeValue{
-					DataType:    v.DataType,
-					BinaryValue: v.BinaryValue,
-					StringValue: v.StringValue,
-				}
-			}
-			input.MessageAttributes = attr
-		}
-
-		result, errPub := q.sns.Publish(context.TODO(), input)
-		if errPub != nil {
-			log.Printf("%s: sns.Publish: error: %v, sleeping %v",
-				me, errPub, q.conf.ErrorCooldownWrite)
-			metric.publishError.WithLabelValues(queueID).Inc()
-			time.Sleep(q.conf.ErrorCooldownWrite)
-			q.putStatus(errPub)
-			continue
-		}
-
-		if debug {
-			log.Printf("%s: sns.Publish: %s", me, *result.MessageId)
-		}
-
-		// delivery latency is measured after successful publish,
-		// while delivery success is recorded after successful delete
-		elap := time.Since(sqsMsg.received)
-
-		//
-		// delete from source queue
-		//
-
-		inputDelete := &sqs.DeleteMessageInput{
-			QueueUrl:      aws.String(q.conf.QueueURL),
-			ReceiptHandle: m.ReceiptHandle,
-		}
-
-		_, errDelete := q.sqs.DeleteMessage(context.TODO(), inputDelete)
-		if errDelete != nil {
-			log.Printf("%s: MessageId: %s - sqs.DeleteMessage: error: %v, sleeping %v",
-				me, *m.MessageId, errDelete, q.conf.ErrorCooldownDelete)
-			metric.deleteError.WithLabelValues(queueID).Inc()
-			time.Sleep(q.conf.ErrorCooldownDelete)
-			q.putStatus(errDelete)
-			continue
-		}
-
-		if debug {
-			log.Printf("%s: sqs.DeleteMessage: %s - total sqs-to-sns latency: %v",
-				me, *m.MessageId, elap)
-		}
-
-		// delivery latency is measured after successful publish,
-		// while delivery success is recorded after successful delete
-		q.putStatus(nil)
-		metric.recordDelivery(queueID, elap)
+		handleMessage(me, q, sqsMsg, metric, tracer)
 	}
 
+}
+
+func handleMessage(me string, q *applicationQueue, sqsMsg message, metric *metrics, tracer trace.Tracer) {
+
+	debug := *q.conf.Debug
+	//copyAttributes := *q.conf.CopyAttributes
+	queueID := q.conf.ID
+	m := &sqsMsg.sqs
+
+	//
+	// Retrieve trace context from SQS message attributes
+	//
+	ctx := otelsqs.ContextFromSqsMessageAttributes(m)
+
+	ctxNew, span := tracer.Start(ctx, "handleMessage")
+	defer span.End()
+
+	if debug {
+		log.Printf("%s: MessageId: %s: traceID:%v", me, *m.MessageId, span.SpanContext().TraceID().String())
+		log.Printf("%s: MessageId: %s: Attributes:%v", me, *m.MessageId, toJSON(m.Attributes))
+		log.Printf("%s: MessageId: %s: MessageAttributes:%v", me, *m.MessageId, toJSON(m.MessageAttributes))
+		log.Printf("%s: MessageId: %s: Body:%v", me, *m.MessageId, *m.Body)
+	}
+
+	//
+	// publish message to SNS topic
+	//
+
+	if published := snsPublish(ctxNew, me, q, sqsMsg, metric, tracer); !published {
+		return
+	}
+
+	// delivery latency is measured after successful publish,
+	// while delivery success is recorded after successful delete
+	elap := time.Since(sqsMsg.received)
+
+	//
+	// delete from source queue
+	//
+
+	if deleted := sqsDelete(ctxNew, me, q, sqsMsg, metric, tracer); !deleted {
+		return
+	}
+
+	if debug {
+		log.Printf("%s: sqs.DeleteMessage: %s - total sqs-to-sns latency: %v",
+			me, *m.MessageId, elap)
+	}
+
+	// delivery latency is measured after successful publish,
+	// while delivery success is recorded after successful delete
+	q.putStatus(nil)
+	metric.recordDelivery(queueID, elap)
+}
+
+func snsPublish(ctx context.Context, me string, q *applicationQueue, sqsMsg message, metric *metrics, tracer trace.Tracer) bool {
+
+	ctxNew, span := tracer.Start(ctx, "snsPublish")
+	defer span.End()
+
+	debug := *q.conf.Debug
+	copyAttributes := *q.conf.CopyAttributes
+	queueID := q.conf.ID
+	m := &sqsMsg.sqs
+
+	input := &sns.PublishInput{
+		Message:  m.Body,
+		TopicArn: aws.String(q.conf.TopicArn),
+	}
+
+	if copyAttributes {
+		//
+		// copy attributes from SQS to SNS
+		//
+		attr := map[string]sns_types.MessageAttributeValue{}
+		for k, v := range m.MessageAttributes {
+			attr[k] = sns_types.MessageAttributeValue{
+				DataType:    v.DataType,
+				BinaryValue: v.BinaryValue,
+				StringValue: v.StringValue,
+			}
+		}
+		input.MessageAttributes = attr
+	}
+
+	//
+	// Inject trace context into SNS message attributes
+	//
+	otelsns.InjectIntoSnsMessageAttributes(ctxNew, input)
+
+	result, errPub := q.sns.Publish(context.TODO(), input)
+	if errPub != nil {
+		log.Printf("%s: sns.Publish: error: %v, sleeping %v",
+			me, errPub, q.conf.ErrorCooldownWrite)
+		metric.publishError.WithLabelValues(queueID).Inc()
+		span.SetStatus(codes.Error, errPub.Error())
+		time.Sleep(q.conf.ErrorCooldownWrite)
+		q.putStatus(errPub)
+		return false
+	}
+
+	if debug {
+		log.Printf("%s: sns.Publish: %s", me, *result.MessageId)
+	}
+
+	return true
+}
+
+func sqsDelete(ctx context.Context, me string, q *applicationQueue, sqsMsg message, metric *metrics, tracer trace.Tracer) bool {
+
+	_, span := tracer.Start(ctx, "sqsDelete")
+	defer span.End()
+
+	queueID := q.conf.ID
+	m := &sqsMsg.sqs
+
+	inputDelete := &sqs.DeleteMessageInput{
+		QueueUrl:      aws.String(q.conf.QueueURL),
+		ReceiptHandle: m.ReceiptHandle,
+	}
+
+	_, errDelete := q.sqs.DeleteMessage(context.TODO(), inputDelete)
+	if errDelete != nil {
+		log.Printf("%s: MessageId: %s - sqs.DeleteMessage: error: %v, sleeping %v",
+			me, *m.MessageId, errDelete, q.conf.ErrorCooldownDelete)
+		metric.deleteError.WithLabelValues(queueID).Inc()
+		time.Sleep(q.conf.ErrorCooldownDelete)
+		q.putStatus(errDelete)
+		return false
+	}
+
+	return true
 }

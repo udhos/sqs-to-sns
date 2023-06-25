@@ -35,6 +35,8 @@ type config struct {
 	queueListFile string
 	queues        []queueConfig
 
+	jaegerURL string
+
 	healthAddr string
 	healthPath string
 
@@ -67,6 +69,8 @@ func newConfig(me string) config {
 
 		// per-queue values
 		queueListFile: env.String("QUEUES", "queues.yaml"),
+
+		jaegerURL: env.String("JAEGER_URL", "http://jaeger-collector:14268/api/traces"),
 
 		healthAddr: env.String("HEALTH_ADDR", ":8888"),
 		healthPath: env.String("HEALTH_PATH", "/health"),
