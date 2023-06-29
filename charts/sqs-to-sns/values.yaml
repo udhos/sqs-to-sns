@@ -68,6 +68,7 @@ configMapProperties:
   #
   # tracing
   #
+  JAEGER_ENABLE: "false"
   JAEGER_URL: http://jaeger-collector:14268/api/traces
   OTEL_TRACES_SAMPLER: parentbased_traceidratio
   OTEL_TRACES_SAMPLER_ARG: "0.01"

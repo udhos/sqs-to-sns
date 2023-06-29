@@ -41,6 +41,7 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 * Standard aws credentials are supported, including static iam users, EC2 instance profiles and iam roles.
 * Messages attributes can be copied from queue to topic.
 * Metrics are exposed in a Prometheus endpoint, providing simple and easy monitoring and alerting, with rich metrics including volume, errors and latency.
+* Open Telemetry traces can be directed to a Jaeger collector, keeping track of messaging flows that cross SQS/SNS boundaries in distributed applications.
 * A health check endpoint is exposed, handy for kubernetes probes, facilitating auto-repair for high resilience and availability.
 * Find prebuilt static executable binary files in the releases page: https://github.com/udhos/sqs-to-sns/releases
 * Docker images are provided at https://hub.docker.com/r/udhos/sqs-to-sns.
@@ -67,6 +68,15 @@ sts-to-sns ;# run the executable
 
 ```
 export QUEUES=queues.yaml ;# queue list configuration file
+
+#
+# Tracing
+#
+
+JAEGER_ENABLE: false
+JAEGER_URL: http://jaeger-collector:14268/api/traces
+OTEL_TRACES_SAMPLER: parentbased_traceidratio
+OTEL_TRACES_SAMPLER_ARG: "0.01"
 
 #
 # Health check

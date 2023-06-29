@@ -98,27 +98,37 @@ func main() {
 	//
 
 	{
-		tp, errTracer := tracing.TracerProvider(me, app.cfg.jaegerURL)
-		if errTracer != nil {
-			log.Fatalf("tracer provider: %v", errTracer)
+		var tp trace.TracerProvider
+
+		if app.cfg.jaegerEnable {
+			p, errTracer := tracing.TracerProvider(me, app.cfg.jaegerURL)
+			if errTracer != nil {
+				log.Fatalf("tracer provider: %v", errTracer)
+			}
+			tp = p
+
+			{
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+
+				// Cleanly shutdown and flush telemetry when the application exits.
+				defer func(ctx context.Context) {
+					// Do not make the application hang when it is shutdown.
+					ctx, cancel = context.WithTimeout(ctx, time.Second*5)
+					defer cancel()
+					if err := p.Shutdown(ctx); err != nil {
+						log.Fatalf("trace shutdown: %v", err)
+					}
+				}(ctx)
+			}
+
+		} else {
+			tp = trace.NewNoopTracerProvider()
 		}
 
 		// Register our TracerProvider as the global so any imported
 		// instrumentation in the future will default to using it.
 		otel.SetTracerProvider(tp)
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		// Cleanly shutdown and flush telemetry when the application exits.
-		defer func(ctx context.Context) {
-			// Do not make the application hang when it is shutdown.
-			ctx, cancel = context.WithTimeout(ctx, time.Second*5)
-			defer cancel()
-			if err := tp.Shutdown(ctx); err != nil {
-				log.Fatalf("trace shutdown: %v", err)
-			}
-		}(ctx)
 
 		tracing.TracePropagation()
 
