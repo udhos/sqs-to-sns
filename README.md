@@ -129,8 +129,8 @@ $ cat queues.yaml
   #queue_role_arn: arn:aws:iam::111111111111:role/sqs_consumer1
   #topic_role_arn: arn:aws:iam::222222222222:role/sns_producer1
   #readers: 1
-  #writers: 10 # recommended: 10*readers
-  #buffer: 20  # recommended: 20*readers
+  #writers: 15 # recommended: 15*readers
+  #buffer: 30  # recommended: 30*readers
   #error_cooldown_read: 10s
   #error_cooldown_write: 10s
   #error_cooldown_delete: 10s
@@ -149,8 +149,8 @@ $ cat queues.yaml
   #queue_role_arn: arn:aws:iam::111111111111:role/sqs_consumer2
   #topic_role_arn: arn:aws:iam::222222222222:role/sns_producer2
   #readers: 1
-  #writers: 10 # recommended: 10*readers
-  #buffer: 20  # recommended: 20*readers
+  #writers: 15 # recommended: 15*readers
+  #buffer: 30  # recommended: 30*readers
   #error_cooldown_read: 10s
   #error_cooldown_write: 10s
   #error_cooldown_delete: 10s
