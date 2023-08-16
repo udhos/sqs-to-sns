@@ -86,8 +86,8 @@ func newConfig(me string) config {
 		queueRoleArn:         env.String("QUEUE_ROLE_ARN", ""),
 		topicRoleArn:         env.String("TOPIC_ROLE_ARN", ""),
 		readers:              env.Int("READERS", 1),
-		writers:              env.Int("WRITERS", 10), // recommended: 10*readers
-		buffer:               env.Int("BUFFER", 20),  // recommended: 20*readers
+		writers:              env.Int("WRITERS", 15), // recommended: 15*readers
+		buffer:               env.Int("BUFFER", 30),  // recommended: 30*readers
 		errorCooldownRead:    env.Duration("READ_ERROR_COOLDOWN", 10*time.Second),
 		errorCooldownWrite:   env.Duration("WRITE_ERROR_COOLDOWN", 10*time.Second),
 		errorCooldownDelete:  env.Duration("DELETE_ERROR_COOLDOWN", 10*time.Second),

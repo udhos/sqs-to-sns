@@ -103,8 +103,8 @@ export QUEUE_ROLE_ARN=arn:aws:iam::111111111111:role/sqs_consumer
 export TOPIC_ROLE_ARN=arn:aws:iam::222222222222:role/sns_producer
 
 export READERS=1                  ;# number of goroutines reading from SQS queue
-export WRITERS=10                 ;# number of goroutines writing to SNS topic (recommended: 10 * READERS)
-export BUFFER=20                  ;# buffer size between readers and writers (recommended: 20 * READERS)
+export WRITERS=15                 ;# number of goroutines writing to SNS topic (recommended: 15 * READERS)
+export BUFFER=30                  ;# buffer size between readers and writers (recommended: 30 * READERS)
 export READ_ERROR_COOLDOWN=10s    ;# cooldown holdtime after read errors
 export WRITE_ERROR_COOLDOWN=10s   ;# cooldown holdtime after write errors
 export DELETE_ERROR_COOLDOWN=10s  ;# cooldown holdtime after delete errors

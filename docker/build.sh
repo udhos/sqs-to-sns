@@ -8,3 +8,5 @@ docker build --no-cache \
     -t udhos/sqs-to-sns:latest \
     -t udhos/sqs-to-sns:$version \
     -f docker/Dockerfile .
+
+echo "push: docker push udhos/sqs-to-sns:$version; docker push udhos/sqs-to-sns:latest"

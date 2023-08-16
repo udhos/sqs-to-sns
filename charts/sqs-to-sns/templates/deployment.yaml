@@ -45,7 +45,7 @@ spec:
         configMap:
           name: {{ include "sqs-to-sns.fullname" . }}-config
       containers:
-        - name: {{ .Chart.Name }}
+        - name: {{ .Release.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
