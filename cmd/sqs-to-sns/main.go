@@ -25,7 +25,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const version = "1.6.2"
+const version = "1.6.3"
 
 type applicationQueue struct {
 	conf         queueConfig
@@ -146,7 +146,7 @@ func main() {
 
 type bogusTracer struct{}
 
-func (t *bogusTracer) Start(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+func (t *bogusTracer) Start(ctx context.Context, _ /*spanName*/ string, _ /*opts*/ ...trace.SpanStartOption) (context.Context, trace.Span) {
 	return ctx, trace.SpanFromContext(ctx)
 }
 

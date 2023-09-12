@@ -133,7 +133,7 @@ func (c *mockSqsClient) count() int {
 	return len(c.messages)
 }
 
-func (c *mockSqsClient) ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+func (c *mockSqsClient) ReceiveMessage( /*ctx*/ _ context.Context, params *sqs.ReceiveMessageInput, _ /*optFns*/ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	out := &sqs.ReceiveMessageOutput{}
@@ -155,7 +155,7 @@ func (c *mockSqsClient) ReceiveMessage(ctx context.Context, params *sqs.ReceiveM
 	return out, nil
 }
 
-func (c *mockSqsClient) DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+func (c *mockSqsClient) DeleteMessage(_ /*ctx*/ context.Context, params *sqs.DeleteMessageInput, _ /*optFns*/ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	delete(c.messages, *params.ReceiptHandle)
@@ -174,7 +174,7 @@ func (c *mockSnsClient) getPublishes() int {
 	return c.publishes
 }
 
-func (c *mockSnsClient) Publish(ctx context.Context, params *sns.PublishInput, optFns ...func(*sns.Options)) (*sns.PublishOutput, error) {
+func (c *mockSnsClient) Publish(_ /*ctx*/ context.Context, _ /*params*/ *sns.PublishInput, _ /*optFns*/ ...func(*sns.Options)) (*sns.PublishOutput, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.publishes++
