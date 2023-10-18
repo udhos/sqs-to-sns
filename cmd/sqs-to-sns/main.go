@@ -25,7 +25,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const version = "1.6.6"
+const version = "1.6.7"
 
 type applicationQueue struct {
 	conf         queueConfig
