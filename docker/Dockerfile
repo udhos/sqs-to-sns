@@ -21,12 +21,12 @@ RUN go build -o /tmp/sqs-to-sns github.com/udhos/sqs-to-sns/cmd/sqs-to-sns
 #
 # curl: https://security.alpinelinux.org/srcpkg/curl
 #
-FROM alpine:3.18.0
+FROM alpine:3.18.4
 COPY --from=builder /tmp/sqs-to-sns /bin/sqs-to-sns
 #RUN apk add curl=8.1.2-r0 libcrypto3=3.1.0-r4 libssl3=3.1.0-r4
 RUN apk update
 RUN apk add curl
-RUN apk upgrade libssl3 libcrypto3 busybox busybox-binsh ssl_client
+RUN apk upgrade libssl3 libcrypto3 busybox busybox-binsh ssl_client libcurl nghttp2-libs
 RUN adduser -D -g '' user
 USER user
 ENTRYPOINT ["/bin/sqs-to-sns"]
