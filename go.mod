@@ -8,12 +8,12 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.23.2
 	github.com/prometheus/client_golang v1.16.0
 	github.com/udhos/boilerplate v1.2.0
-	github.com/udhos/opentelemetry-trace-sqs v0.1.0
-	go.opentelemetry.io/contrib/propagators/b3 v1.17.0
-	go.opentelemetry.io/otel v1.16.0
+	github.com/udhos/opentelemetry-trace-sqs v1.0.1
+	go.opentelemetry.io/contrib/propagators/b3 v1.20.0
+	go.opentelemetry.io/otel v1.19.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.16.0
 	go.opentelemetry.io/otel/sdk v1.16.0
-	go.opentelemetry.io/otel/trace v1.16.0
+	go.opentelemetry.io/otel/trace v1.19.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -53,7 +53,7 @@ require (
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.0 // indirect
-	go.opentelemetry.io/otel/metric v1.16.0 // indirect
-	golang.org/x/sys v0.9.0 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
+	go.opentelemetry.io/otel/metric v1.19.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 )

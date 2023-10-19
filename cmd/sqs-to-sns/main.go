@@ -25,7 +25,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const version = "1.6.7"
+const version = "1.6.8"
 
 type applicationQueue struct {
 	conf         queueConfig
@@ -279,6 +279,9 @@ func writer(q *applicationQueue, writerID int, metric *metrics, tracer trace.Tra
 
 	me := fmt.Sprintf("writer %s[%d/%d]", queueID, writerID, q.conf.Writers)
 
+	carrierSQS := otelsqs.NewCarrier()
+	carrierSNS := otelsns.NewCarrier()
+
 	for {
 		if debug {
 			log.Printf("%s: ready: %s", me, q.conf.TopicArn)
@@ -292,12 +295,14 @@ func writer(q *applicationQueue, writerID int, metric *metrics, tracer trace.Tra
 		metric.buffer.WithLabelValues(queueID).Dec()
 		//m := sqsMsg.sqs
 
-		handleMessage(me, q, sqsMsg, metric, tracer, jaegerEnabled)
+		handleMessage(me, q, sqsMsg, metric, tracer, carrierSQS, carrierSNS, jaegerEnabled)
 	}
 
 }
 
-func handleMessage(me string, q *applicationQueue, sqsMsg message, metric *metrics, tracer trace.Tracer, jaegerEnabled bool) {
+func handleMessage(me string, q *applicationQueue, sqsMsg message, metric *metrics,
+	tracer trace.Tracer, carrierSQS *otelsqs.SqsCarrierAttributes, carrierSNS *otelsns.SnsCarrierAttributes,
+	jaegerEnabled bool) {
 
 	debug := *q.conf.Debug
 	//copyAttributes := *q.conf.CopyAttributes
@@ -307,7 +312,7 @@ func handleMessage(me string, q *applicationQueue, sqsMsg message, metric *metri
 	//
 	// Retrieve trace context from SQS message attributes
 	//
-	ctx := otelsqs.ContextFromSqsMessageAttributes(m)
+	ctx := carrierSQS.Extract(m)
 
 	ctxNew, span := tracer.Start(ctx, "handleMessage")
 	defer span.End()
@@ -323,7 +328,7 @@ func handleMessage(me string, q *applicationQueue, sqsMsg message, metric *metri
 	// publish message to SNS topic
 	//
 
-	if published := snsPublish(ctxNew, me, q, sqsMsg, metric, tracer, jaegerEnabled); !published {
+	if published := snsPublish(ctxNew, me, q, sqsMsg, metric, tracer, carrierSNS, jaegerEnabled); !published {
 		return
 	}
 
@@ -350,7 +355,9 @@ func handleMessage(me string, q *applicationQueue, sqsMsg message, metric *metri
 	metric.recordDelivery(queueID, elap)
 }
 
-func snsPublish(ctx context.Context, me string, q *applicationQueue, sqsMsg message, metric *metrics, tracer trace.Tracer, jaegerEnabled bool) bool {
+func snsPublish(ctx context.Context, me string, q *applicationQueue, sqsMsg message,
+	metric *metrics, tracer trace.Tracer, carrierSNS *otelsns.SnsCarrierAttributes,
+	jaegerEnabled bool) bool {
 
 	ctxNew, span := tracer.Start(ctx, "snsPublish")
 	defer span.End()
@@ -384,7 +391,7 @@ func snsPublish(ctx context.Context, me string, q *applicationQueue, sqsMsg mess
 		//
 		// Inject trace context into SNS message attributes
 		//
-		otelsns.InjectIntoSnsMessageAttributes(ctxNew, input)
+		carrierSNS.Inject(ctxNew, input)
 	}
 
 	result, errPub := q.sns.Publish(context.TODO(), input)
