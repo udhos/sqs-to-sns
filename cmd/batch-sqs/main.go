@@ -16,7 +16,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/udhos/boilerplate/boilerplate"
-	"github.com/udhos/sqs-to-sns/sqsclient"
+	"github.com/udhos/opentelemetry-trace-sqs/otelsqs"
+	"github.com/udhos/sqs-to-sns/internal/sqsclient"
+	"github.com/udhos/sqs-to-sns/internal/tracing"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type config struct {
@@ -26,7 +30,7 @@ type config struct {
 	wg          sync.WaitGroup
 }
 
-const version = "0.1.0"
+const version = "1.1.0"
 
 const batch = 10
 
@@ -39,13 +43,15 @@ func main() {
 	var count int
 	var writers int
 	var showVersion bool
+	var debug bool
 
-	flag.IntVar(&count, "count", 10000, "total number of messages to send")
+	flag.IntVar(&count, "count", 30, "total number of messages to send")
 	flag.IntVar(&writers, "writers", 30, "number of concurrent writers")
 	flag.StringVar(&conf.queueURL, "queueURL", "", "required queue URL")
 	flag.StringVar(&conf.roleArn, "roleArn", "", "optional role ARN")
 	flag.StringVar(&conf.endpointURL, "endpointURL", "", "optional endpoint URL")
 	flag.BoolVar(&showVersion, "version", showVersion, "show version")
+	flag.BoolVar(&debug, "debug", debug, "debug")
 	flag.Parse()
 
 	{
@@ -57,16 +63,69 @@ func main() {
 		log.Print(v)
 	}
 
+	//
+	// initialize tracing
+	//
+
+	jaegerURL := envString("JAEGER_URL", "http://jaeger-collector:14268/api/traces")
+
+	var tracer trace.Tracer
+
+	{
+		tp, errTracer := tracing.TracerProvider(me, jaegerURL)
+		if errTracer != nil {
+			log.Fatalf("tracer provider: %v", errTracer)
+		}
+
+		// Register our TracerProvider as the global so any imported
+		// instrumentation in the future will default to using it.
+		otel.SetTracerProvider(tp)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// Cleanly shutdown and flush telemetry when the application exits.
+		defer func(ctx context.Context) {
+			// Do not make the application hang when it is shutdown.
+			ctx, cancel = context.WithTimeout(ctx, time.Second*5)
+			defer cancel()
+			if err := tp.Shutdown(ctx); err != nil {
+				log.Fatalf("trace shutdown: %v", err)
+			}
+		}(ctx)
+
+		tracing.TracePropagation()
+
+		tracer = tp.Tracer(me)
+	}
+
+	//
+	// send
+	//
+
+	ctx, span := tracer.Start(context.TODO(), me)
+	defer span.End()
+
+	traceID := span.SpanContext().TraceID().String()
+
 	messages := []types.SendMessageBatchRequestEntry{}
 
-	body := "hello world"
+	body := fmt.Sprintf("batch-sqs traceID:%s", traceID)
 
 	for i := 0; i < batch; i++ {
 		id := strconv.Itoa(i)
 		m := types.SendMessageBatchRequestEntry{
-			MessageBody: aws.String(body),
-			Id:          aws.String(id),
+			MessageBody:       aws.String(body),
+			Id:                aws.String(id),
+			MessageAttributes: make(map[string]types.MessageAttributeValue),
 		}
+
+		if debug {
+			log.Printf("MessageId:%s TraceId:%s", aws.ToString(m.Id), traceID)
+		}
+
+		otelsqs.NewCarrier().Inject(ctx, m.MessageAttributes)
+
 		messages = append(messages, m)
 	}
 

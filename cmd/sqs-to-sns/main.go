@@ -19,13 +19,13 @@ import (
 	"github.com/udhos/boilerplate/boilerplate"
 	"github.com/udhos/opentelemetry-trace-sqs/otelsns"
 	"github.com/udhos/opentelemetry-trace-sqs/otelsqs"
-	"github.com/udhos/sqs-to-sns/cmd/sqs-to-sns/internal/tracing"
+	"github.com/udhos/sqs-to-sns/internal/tracing"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
-const version = "1.6.8"
+const version = "1.6.9"
 
 type applicationQueue struct {
 	conf         queueConfig
@@ -312,7 +312,14 @@ func handleMessage(me string, q *applicationQueue, sqsMsg message, metric *metri
 	//
 	// Retrieve trace context from SQS message attributes
 	//
-	ctx := carrierSQS.Extract(m)
+
+	/*
+		if m.MessageAttributes == nil {
+			m.MessageAttributes = make(map[string]types.MessageAttributeValue)
+		}
+	*/
+
+	ctx := carrierSQS.Extract(m.MessageAttributes)
 
 	ctxNew, span := tracer.Start(ctx, "handleMessage")
 	defer span.End()
@@ -368,8 +375,9 @@ func snsPublish(ctx context.Context, me string, q *applicationQueue, sqsMsg mess
 	m := &sqsMsg.sqs
 
 	input := &sns.PublishInput{
-		Message:  m.Body,
-		TopicArn: aws.String(q.conf.TopicArn),
+		Message:           m.Body,
+		TopicArn:          aws.String(q.conf.TopicArn),
+		MessageAttributes: make(map[string]sns_types.MessageAttributeValue),
 	}
 
 	if copyAttributes {
@@ -391,7 +399,7 @@ func snsPublish(ctx context.Context, me string, q *applicationQueue, sqsMsg mess
 		//
 		// Inject trace context into SNS message attributes
 		//
-		carrierSNS.Inject(ctxNew, input)
+		carrierSNS.Inject(ctxNew, input.MessageAttributes)
 	}
 
 	result, errPub := q.sns.Publish(context.TODO(), input)

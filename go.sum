@@ -102,8 +102,8 @@ github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcU
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/udhos/boilerplate v1.2.0 h1:63RkljR+kPQmUJaURGo7l7yJ4N+HmW9asu0ahSlESV8=
 github.com/udhos/boilerplate v1.2.0/go.mod h1:/E7iBoSMqZhwRwKM9wDTQy1z97FPSNU3F6GkWMEytjo=
-github.com/udhos/opentelemetry-trace-sqs v1.0.1 h1:2CLuQeUvzDFSqOCemSZy+nqfmZdThwX77hkhDhPYL3s=
-github.com/udhos/opentelemetry-trace-sqs v1.0.1/go.mod h1:EQZJLUNcE+4iSCrNmOIw4N/hk/+RYWaQmk4/DTZrpo0=
+github.com/udhos/opentelemetry-trace-sqs v1.1.0 h1:Mz8OLXuXAFCaM/UuBP3ltXgTw6w19A3L9LK/ZlELS90=
+github.com/udhos/opentelemetry-trace-sqs v1.1.0/go.mod h1:EQZJLUNcE+4iSCrNmOIw4N/hk/+RYWaQmk4/DTZrpo0=
 go.opentelemetry.io/contrib/propagators/b3 v1.20.0 h1:Yty9Vs4F3D6/liF1o6FNt0PvN85h/BJJ6DQKJ3nrcM0=
 go.opentelemetry.io/contrib/propagators/b3 v1.20.0/go.mod h1:On4VgbkqYL18kbJlWsa18+cMNe6rYpBnPi1ARI/BrsU=
 go.opentelemetry.io/otel v1.19.0 h1:MuS/TNf4/j4IXsZuJegVzI1cwut7Qc00344rgH7p8bs=

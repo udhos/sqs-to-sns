@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.23.2
 	github.com/prometheus/client_golang v1.16.0
 	github.com/udhos/boilerplate v1.2.0
-	github.com/udhos/opentelemetry-trace-sqs v1.0.1
+	github.com/udhos/opentelemetry-trace-sqs v1.1.0
 	go.opentelemetry.io/contrib/propagators/b3 v1.20.0
 	go.opentelemetry.io/otel v1.19.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.16.0
