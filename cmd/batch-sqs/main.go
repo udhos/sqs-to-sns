@@ -30,7 +30,7 @@ type config struct {
 	wg          sync.WaitGroup
 }
 
-const version = "1.1.0"
+const version = "1.1.1"
 
 const batch = 10
 
@@ -44,6 +44,7 @@ func main() {
 	var writers int
 	var showVersion bool
 	var debug bool
+	var attributes int
 
 	flag.IntVar(&count, "count", 30, "total number of messages to send")
 	flag.IntVar(&writers, "writers", 30, "number of concurrent writers")
@@ -52,6 +53,7 @@ func main() {
 	flag.StringVar(&conf.endpointURL, "endpointURL", "", "optional endpoint URL")
 	flag.BoolVar(&showVersion, "version", showVersion, "show version")
 	flag.BoolVar(&debug, "debug", debug, "debug")
+	flag.IntVar(&attributes, "attributes", 1, "number of attributes to send")
 	flag.Parse()
 
 	{
@@ -120,6 +122,14 @@ func main() {
 			MessageAttributes: make(map[string]types.MessageAttributeValue),
 		}
 
+		for j := 0; j < attributes; j++ {
+			str := fmt.Sprintf("%d", j)
+			m.MessageAttributes[str] = types.MessageAttributeValue{
+				StringValue: aws.String(str),
+				DataType:    aws.String("String"),
+			}
+		}
+
 		if debug {
 			log.Printf("MessageId:%s TraceId:%s", aws.ToString(m.Id), traceID)
 		}
@@ -164,12 +174,16 @@ func writer(id, total int, conf *config, count int, messages []types.SendMessage
 			Entries:  messages,
 			QueueUrl: &conf.queueURL,
 		}
-		_, errSend := sqsClient.SendMessageBatch(context.TODO(), input)
+		output, errSend := sqsClient.SendMessageBatch(context.TODO(), input)
 		if errSend != nil {
 			log.Printf("%s: SendMessageBatch error: %v, sleeping %v",
 				me, errSend, cooldown)
 			time.Sleep(cooldown)
 			continue
+		}
+		for _, f := range output.Failed {
+			log.Printf("%s: message failed: id=%s sender_fault=%t code=%s message:%s",
+				me, aws.ToString(f.Id), f.SenderFault, aws.ToString(f.Code), aws.ToString(f.Message))
 		}
 		sent += batch
 	}
