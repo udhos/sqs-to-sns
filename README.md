@@ -73,7 +73,7 @@ export QUEUES=queues.yaml ;# queue list configuration file
 # Tracing
 #
 
-export JAEGER_ENABLE=alse
+export JAEGER_ENABLE=true
 export OTEL_TRACES_SAMPLER=parentbased_traceidratio
 export OTEL_TRACES_SAMPLER_ARG=0.01
 
