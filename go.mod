@@ -9,7 +9,7 @@ require (
 	github.com/prometheus/client_golang v1.16.0
 	github.com/udhos/boilerplate v1.2.0
 	github.com/udhos/opentelemetry-trace-sqs v1.1.0
-	github.com/udhos/otelconfig v0.1.2
+	github.com/udhos/otelconfig v0.1.3
 	go.opentelemetry.io/otel v1.19.0
 	go.opentelemetry.io/otel/trace v1.19.0
 	gopkg.in/yaml.v3 v3.0.1

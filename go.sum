@@ -109,8 +109,8 @@ github.com/udhos/boilerplate v1.2.0 h1:63RkljR+kPQmUJaURGo7l7yJ4N+HmW9asu0ahSlES
 github.com/udhos/boilerplate v1.2.0/go.mod h1:/E7iBoSMqZhwRwKM9wDTQy1z97FPSNU3F6GkWMEytjo=
 github.com/udhos/opentelemetry-trace-sqs v1.1.0 h1:Mz8OLXuXAFCaM/UuBP3ltXgTw6w19A3L9LK/ZlELS90=
 github.com/udhos/opentelemetry-trace-sqs v1.1.0/go.mod h1:EQZJLUNcE+4iSCrNmOIw4N/hk/+RYWaQmk4/DTZrpo0=
-github.com/udhos/otelconfig v0.1.2 h1:ghuDQK2FduJP6s9juZLwfk8XhcC9G4Tj0fsP1neggTE=
-github.com/udhos/otelconfig v0.1.2/go.mod h1:y53Z2bDbxUGWQIIM8N+hZc/nZHdKG1OWEp73Mj7u5Oc=
+github.com/udhos/otelconfig v0.1.3 h1:Uan8wLieBbuX+IvEK+Wr+JTQRhNz+oTEGS7vXK0ZGLc=
+github.com/udhos/otelconfig v0.1.3/go.mod h1:y53Z2bDbxUGWQIIM8N+hZc/nZHdKG1OWEp73Mj7u5Oc=
 go.opentelemetry.io/contrib/propagators/autoprop v0.45.0 h1:FT/JCFzjzXgyp/aXkQeywnI/Tl8ZtKhvusVtZOokmFM=
 go.opentelemetry.io/contrib/propagators/autoprop v0.45.0/go.mod h1:L/2JIbqAmGzBvGJ3rXA+KXmWXUuUYUDZnhXeJttjJRg=
 go.opentelemetry.io/contrib/propagators/aws v1.20.0 h1:PByDRx6xPygwFP+L3FTlOifJoCB10T2LdRBZcDYMTJw=
