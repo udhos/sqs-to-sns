@@ -73,10 +73,27 @@ export QUEUES=queues.yaml ;# queue list configuration file
 # Tracing
 #
 
-JAEGER_ENABLE: false
-JAEGER_URL: http://jaeger-collector:14268/api/traces
-OTEL_TRACES_SAMPLER: parentbased_traceidratio
-OTEL_TRACES_SAMPLER_ARG: "0.01"
+export JAEGER_ENABLE=alse
+export OTEL_TRACES_SAMPLER=parentbased_traceidratio
+export OTEL_TRACES_SAMPLER_ARG=0.01
+
+# Jaeger
+export OTELCONFIG_EXPORTER=jaeger
+export OTEL_TRACES_EXPORTER=jaeger
+export OTEL_PROPAGATORS=b3multi
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger-collector:14268
+
+# OTLP gRPC
+#export OTELCONFIG_EXPORTER=grpc
+#export OTEL_TRACES_EXPORTER=otlp
+#export OTEL_PROPAGATORS=b3multi
+#export OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger-collector:4317
+
+# OTLP HTTP
+#export OTELCONFIG_EXPORTER=http
+#export OTEL_TRACES_EXPORTER=otlp
+#export OTEL_PROPAGATORS=b3multi
+#export OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger-collector:4318
 
 #
 # Health check

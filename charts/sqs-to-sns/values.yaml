@@ -69,9 +69,29 @@ configMapProperties:
   # tracing
   #
   JAEGER_ENABLE: "false"
-  JAEGER_URL: http://jaeger-collector:14268/api/traces
   OTEL_TRACES_SAMPLER: parentbased_traceidratio
   OTEL_TRACES_SAMPLER_ARG: "0.01"
+  #
+  # General configuration: https://opentelemetry.io/docs/concepts/sdk-configuration/general-sdk-configuration/
+  # Exporter configuration: https://opentelemetry.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/
+  #
+  # Jaeger:
+  OTELCONFIG_EXPORTER: jaeger
+  OTEL_TRACES_EXPORTER: jaeger
+  OTEL_PROPAGATORS: b3multi
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger-collector:14268
+  #
+  # OTLP gRPC:
+  #OTELCONFIG_EXPORTER: grpc
+  #OTEL_TRACES_EXPORTER: otlp
+  #OTEL_PROPAGATORS: b3multi
+  #OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger-collector:4317
+  #
+  # OTLP HTTP:
+  #OTELCONFIG_EXPORTER: http
+  #OTEL_TRACES_EXPORTER: otlp
+  #OTEL_PROPAGATORS: b3multi
+  #OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger-collector:4318
   #
   # health checks (use for livenessProbe only, not for readinessProbe)
   #

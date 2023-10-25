@@ -19,13 +19,12 @@ import (
 	"github.com/udhos/boilerplate/boilerplate"
 	"github.com/udhos/opentelemetry-trace-sqs/otelsns"
 	"github.com/udhos/opentelemetry-trace-sqs/otelsqs"
-	"github.com/udhos/sqs-to-sns/internal/tracing"
-	"go.opentelemetry.io/otel"
+	"github.com/udhos/otelconfig/oteltrace"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
-const version = "1.6.9"
+const version = "1.12.0"
 
 type applicationQueue struct {
 	conf         queueConfig
@@ -98,41 +97,21 @@ func main() {
 	//
 
 	{
-		var tp trace.TracerProvider
-
-		if app.cfg.jaegerEnable {
-			p, errTracer := tracing.TracerProvider(me, app.cfg.jaegerURL)
-			if errTracer != nil {
-				log.Fatalf("tracer provider: %v", errTracer)
-			}
-			tp = p
-
-			{
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
-
-				// Cleanly shutdown and flush telemetry when the application exits.
-				defer func(ctx context.Context) {
-					// Do not make the application hang when it is shutdown.
-					ctx, cancel = context.WithTimeout(ctx, time.Second*5)
-					defer cancel()
-					if err := p.Shutdown(ctx); err != nil {
-						log.Fatalf("trace shutdown: %v", err)
-					}
-				}(ctx)
-			}
-
-		} else {
-			tp = trace.NewNoopTracerProvider()
+		options := oteltrace.TraceOptions{
+			DefaultService:     me,
+			NoopTracerProvider: !app.cfg.jaegerEnable,
+			Debug:              true,
 		}
 
-		// Register our TracerProvider as the global so any imported
-		// instrumentation in the future will default to using it.
-		otel.SetTracerProvider(tp)
+		tracer, cancel, errTracer := oteltrace.TraceStart(options)
 
-		tracing.TracePropagation()
+		if errTracer != nil {
+			log.Fatalf("tracer: %v", errTracer)
+		}
 
-		app.tracer = tp.Tracer(fmt.Sprintf("%s-main", me))
+		defer cancel()
+
+		app.tracer = tracer
 	}
 
 	//
