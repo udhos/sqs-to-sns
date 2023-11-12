@@ -15,5 +15,5 @@
 # vendor/
 
 go.work
-boilerplate
 tmp/
+charts-tmp
