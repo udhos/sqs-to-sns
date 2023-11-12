@@ -1,6 +1,6 @@
 module github.com/udhos/sqs-to-sns
 
-go 1.21.3
+go 1.21.4
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.18.1
@@ -12,6 +12,7 @@ require (
 	github.com/udhos/otelconfig v0.1.3
 	go.opentelemetry.io/otel v1.19.0
 	go.opentelemetry.io/otel/trace v1.19.0
+	go.uber.org/automaxprocs v1.5.3
 	gopkg.in/yaml.v3 v3.0.1
 )
 

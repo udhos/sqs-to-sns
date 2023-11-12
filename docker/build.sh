@@ -1,12 +1,14 @@
 #!/bin/bash
 
-version=$(go run ./cmd/sqs-to-sns -version | awk '{ print $2 }' | awk -F= '{ print $2 }')
+app=sqs-to-sns
+
+version=$(go run ./cmd/$app -version | awk '{ print $2 }' | awk -F= '{ print $2 }')
 
 echo version=$version
 
 docker build --no-cache \
-    -t udhos/sqs-to-sns:latest \
-    -t udhos/sqs-to-sns:$version \
+    -t udhos/$app:latest \
+    -t udhos/$app:$version \
     -f docker/Dockerfile .
 
-echo "push: docker push udhos/sqs-to-sns:$version; docker push udhos/sqs-to-sns:latest"
+echo "push: docker push udhos/$app:$version; docker push udhos/$app:latest"

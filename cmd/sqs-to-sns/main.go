@@ -22,9 +22,8 @@ import (
 	"github.com/udhos/otelconfig/oteltrace"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	_ "go.uber.org/automaxprocs"
 )
-
-const version = "1.12.2"
 
 type applicationQueue struct {
 	conf         queueConfig
