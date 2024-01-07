@@ -17,3 +17,4 @@
 go.work
 tmp/
 charts-tmp
+docker-push.sh
