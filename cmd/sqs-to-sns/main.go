@@ -22,6 +22,7 @@ import (
 	"github.com/udhos/otelconfig/oteltrace"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	_ "go.uber.org/automaxprocs"
 )
 
@@ -122,12 +123,6 @@ func main() {
 	<-make(chan struct{}) // wait forever
 }
 
-type bogusTracer struct{}
-
-func (t *bogusTracer) Start(ctx context.Context, _ /*spanName*/ string, _ /*opts*/ ...trace.SpanStartOption) (context.Context, trace.Span) {
-	return ctx, trace.SpanFromContext(ctx)
-}
-
 func newApp(me string, createSqsClient newSqsClientFunc, createSnsClient newSnsClientFunc) *application {
 	cfg := newConfig(me)
 
@@ -137,7 +132,7 @@ func newApp(me string, createSqsClient newSqsClientFunc, createSnsClient newSnsC
 
 		// this bogus tracer will be replaced by actual tracer in main().
 		// we assign this bogus tracer here just to prevents crashes when testing.
-		tracer: &bogusTracer{},
+		tracer: &noop.Tracer{},
 	}
 
 	for _, qc := range cfg.queues {
@@ -297,7 +292,7 @@ func handleMessage(me string, q *applicationQueue, sqsMsg message, metric *metri
 		}
 	*/
 
-	ctx := carrierSQS.Extract(m.MessageAttributes)
+	ctx := carrierSQS.Extract(context.TODO(), m.MessageAttributes)
 
 	ctxNew, span := tracer.Start(ctx, "handleMessage")
 	defer span.End()
