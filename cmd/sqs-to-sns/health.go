@@ -23,7 +23,7 @@ func serveHealth(app *application, addr, path string) {
 
 	const cacheTTL = 10 * time.Second
 
-	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc(path, func(w http.ResponseWriter, _ /*r*/ *http.Request) {
 		var h health
 		var queue string
 
