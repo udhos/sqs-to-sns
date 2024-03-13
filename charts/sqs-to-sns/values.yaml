@@ -64,6 +64,7 @@ podHealthCheck:
 # See: https://stackoverflow.com/questions/72816925/helm-templating-in-configmap-for-values-yaml
 #
 configMapProperties:
+  AUTOMEMLIMIT_DEBUG: "true"
   QUEUES: /etc/sqs-to-sns/queues.yaml
   #
   # tracing
@@ -166,11 +167,11 @@ resources:
   requests:
     cpu: 300m
     memory: 100Mi
-    ephemeral-storage: 100Mi
+    ephemeral-storage: 1Gi
   limits:
     cpu: 2000m
     memory: 200Mi
-    ephemeral-storage: 200Mi
+    ephemeral-storage: 1Gi
 
 autoscaling:
   enabled: true

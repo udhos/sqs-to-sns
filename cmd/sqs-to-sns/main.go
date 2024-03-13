@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	_ "github.com/KimMachineGun/automemlimit"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	sns_types "github.com/aws/aws-sdk-go-v2/service/sns/types"
