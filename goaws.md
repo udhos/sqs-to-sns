@@ -2,6 +2,11 @@
 https://github.com/Admiral-Piett/goaws
 
 ```bash
+git clone https://github.com/Admiral-Piett/goaws
+cd goaws
+go build -o ~/go/bin/goaws ./app/cmd
+
+
 goaws -config app/conf/goaws.yaml
 
 

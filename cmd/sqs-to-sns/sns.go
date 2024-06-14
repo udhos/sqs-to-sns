@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/udhos/boilerplate/awsconfig"
 )
@@ -40,7 +41,13 @@ func newSnsClientAws(sessionName, topicArn, roleArn, endpointURL string) *sns.Cl
 		log.Fatalf("%s: aws config error: %v", me, errAwsConf)
 	}
 
-	return sns.NewFromConfig(awsConf.AwsConfig)
+	client := sns.NewFromConfig(awsConf.AwsConfig, func(o *sns.Options) {
+		if endpointURL != "" {
+			o.BaseEndpoint = aws.String(endpointURL)
+		}
+	})
+
+	return client
 }
 
 // arn:aws:sns:us-east-1:123456789012:mytopic

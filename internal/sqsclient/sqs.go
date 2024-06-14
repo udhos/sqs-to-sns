@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/udhos/boilerplate/awsconfig"
 )
@@ -31,7 +32,13 @@ func NewClient(sessionName, queueURL, roleArn, endpointURL string) *sqs.Client {
 		log.Fatalf("%s: aws config error: %v", me, errAwsConf)
 	}
 
-	return sqs.NewFromConfig(awsConfSqs.AwsConfig)
+	client := sqs.NewFromConfig(awsConfSqs.AwsConfig, func(o *sqs.Options) {
+		if endpointURL != "" {
+			o.BaseEndpoint = aws.String(endpointURL)
+		}
+	})
+
+	return client
 }
 
 // https://sqs.us-east-1.amazonaws.com/123456789012/myqueue
