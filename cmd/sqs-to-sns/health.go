@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -13,19 +14,24 @@ type health struct {
 	when   time.Time
 }
 
-func serveHealth(app *application, addr, path string) {
+func serveHealth(app *application, addr, path string) *http.Server {
 
 	const me = "serveHealth"
 
 	var lastQueue string
 	var lastStatus health
 	var lastFind time.Time
+	var lastLock sync.Mutex
 
 	const cacheTTL = 10 * time.Second
 
-	http.HandleFunc(path, func(w http.ResponseWriter, _ /*r*/ *http.Request) {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc(path, func(w http.ResponseWriter, _ /*r*/ *http.Request) {
 		var h health
 		var queue string
+
+		lastLock.Lock()
 
 		elap := time.Since(lastFind)
 		cache := elap < cacheTTL
@@ -43,6 +49,8 @@ func serveHealth(app *application, addr, path string) {
 			lastStatus = h
 			lastFind = time.Now()
 		}
+
+		lastLock.Unlock()
 
 		if h.status == nil {
 			//
@@ -64,7 +72,15 @@ func serveHealth(app *application, addr, path string) {
 
 	log.Printf("%s: starting health server at: %s %s", me, addr, path)
 
-	listenAndServe(addr, nil)
+	server := &http.Server{Addr: addr, Handler: mux}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil {
+			log.Printf("%s: addr=%s exited: %v", me, addr, err)
+		}
+	}()
+
+	return server
 }
 
 func findError(app *application) (health, string) {
@@ -76,10 +92,4 @@ func findError(app *application) (health, string) {
 		}
 	}
 	return health{}, "" // no error
-}
-
-func listenAndServe(addr string, handler http.Handler) {
-	server := &http.Server{Addr: addr, Handler: handler}
-	err := server.ListenAndServe()
-	log.Fatalf("listenAndServe: addr=%s error: %v", addr, err)
 }

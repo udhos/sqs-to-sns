@@ -60,6 +60,7 @@ type application struct {
 	queues []*applicationQueue
 	m      *metrics
 	tracer trace.Tracer
+	prom   *prom
 }
 
 func main() {
@@ -127,13 +128,17 @@ func main() {
 func newApp(me string, createSqsClient newSqsClientFunc, createSnsClient newSnsClientFunc) *application {
 	cfg := newConfig(me)
 
+	prom := newProm()
+
 	app := &application{
 		cfg: cfg,
-		m:   newMetrics(cfg.metricsNamespace, cfg.metricsBucketsLatency),
+		m:   newMetrics(prom, cfg.metricsNamespace, cfg.metricsBucketsLatency),
 
 		// this bogus tracer will be replaced by actual tracer in main().
 		// we assign this bogus tracer here just to prevents crashes when testing.
 		tracer: &noop.Tracer{},
+
+		prom: prom,
 	}
 
 	for _, qc := range cfg.queues {
@@ -152,11 +157,11 @@ func newApp(me string, createSqsClient newSqsClientFunc, createSnsClient newSnsC
 func run(app *application) {
 
 	if app.cfg.healthAddr != "" {
-		go serveHealth(app, app.cfg.healthAddr, app.cfg.healthPath)
+		serveHealth(app, app.cfg.healthAddr, app.cfg.healthPath)
 	}
 
 	if app.cfg.metricsAddr != "" {
-		go serveMetrics(app.cfg.metricsAddr, app.cfg.metricsPath)
+		go serveMetrics(app.prom, app.cfg.metricsAddr, app.cfg.metricsPath)
 	}
 
 	for _, q := range app.queues {
