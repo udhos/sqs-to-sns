@@ -11,11 +11,11 @@ import (
 // go test -race -count 1 -run TestHealth ./cmd/sqs-to-sns
 func TestHealth(t *testing.T) {
 
-	newMockSqsClient := func(sessionName, queueURL, roleArn, endpointURL string) sqsClient {
+	newMockSqsClient := func(_, _, _, _ string) sqsClient {
 		return nil
 	}
 
-	newMockSnsClient := func(sessionName, queueURL, roleArn, endpointURL string) snsClient {
+	newMockSnsClient := func(_, _, _, _ string) snsClient {
 		return nil
 	}
 
