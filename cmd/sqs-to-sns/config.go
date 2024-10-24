@@ -27,6 +27,8 @@ type queueConfig struct {
 	EmptyReceiveCooldown time.Duration `yaml:"empty_receive_cooldown"`
 	CopyAttributes       *bool         `yaml:"copy_attributes"`
 	Debug                *bool         `yaml:"debug"`
+	MaxNumberOfMessages  *int32        `yaml:"max_number_of_messages"` // 1..10 (default 10)
+	WaitTimeSeconds      *int32        `yaml:"wait_time_seconds"`      // 0..20 (default 20)
 }
 
 type config struct {
@@ -57,6 +59,8 @@ type config struct {
 	emptyReceiveCooldown time.Duration
 	copyAttributes       bool
 	debug                bool
+	maxNumberOfMessages  int32 // 1..10 (default 10)
+	waitTimeSeconds      int32 // 0..20 (default 20)
 }
 
 func newConfig(me string) config {
@@ -92,6 +96,8 @@ func newConfig(me string) config {
 		emptyReceiveCooldown: env.Duration("EMPTY_RECEIVE_COOLDOWN", 10*time.Second),
 		copyAttributes:       env.Bool("COPY_ATTRIBUTES", true),
 		debug:                env.Bool("DEBUG", true),
+		maxNumberOfMessages:  int32(env.Int("MAX_NUMBER_OF_MESSAGES", 10)), // 1..10 (default 10)
+		waitTimeSeconds:      int32(env.Int("WAIT_TIME_SECONDS", 20)),      // 0..20 (default 20)
 	}
 
 	cfg.queues = loadQueueConf(cfg)
@@ -160,6 +166,14 @@ func queueDefaults(q queueConfig, cfg config) queueConfig {
 	if q.Debug == nil {
 		b := cfg.debug
 		q.Debug = &b
+	}
+	if q.MaxNumberOfMessages == nil {
+		b := cfg.maxNumberOfMessages
+		q.MaxNumberOfMessages = &b
+	}
+	if q.WaitTimeSeconds == nil {
+		b := cfg.waitTimeSeconds
+		q.WaitTimeSeconds = &b
 	}
 	return q
 }

@@ -128,6 +128,8 @@ export DELETE_ERROR_COOLDOWN=10s  ;# cooldown holdtime after delete errors
 export EMPTY_RECEIVE_COOLDOWN=10s ;# cooldown holdtime after empty receive
 export COPY_ATTRIBUTES=true       ;# enable copying of message attributes from SQS message to SNS message
 export DEBUG=true                 ;# enable debug logs
+export MAX_NUMBER_OF_MESSAGES=10  ;# 1..10 (default 10)
+export WAIT_TIME_SECONDS=20       ;# 0..20 (default 20)
 ```
 
 ## Queue list configuration file
@@ -154,6 +156,8 @@ $ cat queues.yaml
   #empty_receive_cooldown: 10s
   #copy_attributes: true
   #debug: true
+  #max_number_of_messages: "10" # 1..10 (default 10)
+  #wait_time_seconds: "20"      # 0..20 (default 20)
 - id: q2
   #
   # required
@@ -174,6 +178,8 @@ $ cat queues.yaml
   #empty_receive_cooldown: 10s
   #copy_attributes: true
   #debug: true
+  #max_number_of_messages: "10" # 1..10 (default 10)
+  #wait_time_seconds: "20"      # 0..20 (default 20)
 ```
 
 ## Roles

@@ -187,16 +187,17 @@ func reader(q *applicationQueue, readerID int, m *metrics) {
 		AttributeNames: []types.QueueAttributeName{
 			"SentTimestamp",
 		},
-		MaxNumberOfMessages: 10, // 1..10
+		MaxNumberOfMessages: *q.conf.MaxNumberOfMessages, // 1..10 (default 10)
 		MessageAttributeNames: []string{
 			"All",
 		},
-		WaitTimeSeconds: 20, // 0..20
+		WaitTimeSeconds: *q.conf.WaitTimeSeconds, // 0..20 (default 20)
 	}
 
 	for {
 		if debug {
-			log.Printf("%s: ready: %s", me, q.conf.QueueURL)
+			log.Printf("%s: ready: %s MaxNumberOfMessages=%d WaitTimeSeconds=%d",
+				me, q.conf.QueueURL, input.MaxNumberOfMessages, input.WaitTimeSeconds)
 		}
 
 		//
