@@ -12,10 +12,11 @@ COPY ./cmd/ /tmp/app/cmd
 COPY ./internal/ /tmp/app/internal
 COPY go.* /tmp/app/
 WORKDIR /tmp/app
-RUN rm -f ./orchestrion.tool.go
+RUN go install github.com/DataDog/orchestrion@v1.3.1
+RUN orchestrion pin
 RUN go mod tidy
 RUN go env -w CGO_ENABLED=0
-RUN go build -o /tmp/sqs-to-sns github.com/udhos/sqs-to-sns/cmd/sqs-to-sns
+RUN orchestrion go build -o /tmp/sqs-to-sns github.com/udhos/sqs-to-sns/cmd/sqs-to-sns
 
 #
 # STEP 2 build a small image from alpine

@@ -101,6 +101,9 @@ configMapProperties:
   #
   # prometheus metrics
   #
+  PROMETHEUS_ENABLE: "true"
+  DOGSTATSD_ENABLE: "true"
+  DOGSTATSD_DEBUG: "false"
   METRICS_ADDR: :3000
   METRICS_PATH: /metrics
   METRICS_NAMESPACE: sqstosns

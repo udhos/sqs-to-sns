@@ -4,8 +4,10 @@ go install golang.org/x/vuln/cmd/govulncheck@latest
 go install golang.org/x/tools/cmd/deadcode@latest
 go install github.com/mgechev/revive@latest
 
-echo "removing orchestrion pin"
-rm -f ./orchestrion.tool.go
+go install github.com/DataDog/orchestrion@v1.3.1
+
+echo "adding orchestrion pin"
+orchestrion pin
 
 gofmt -s -w .
 
@@ -23,6 +25,6 @@ go test -race ./...
 
 go env -w CGO_ENABLED=0
 
-go install ./...
+orchestrion go build -o ~/go/bin/sqs-to-sns-datadog ./cmd/sqs-to-sns
 
 go env -u CGO_ENABLED

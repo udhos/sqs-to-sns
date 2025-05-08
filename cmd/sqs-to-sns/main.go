@@ -98,7 +98,7 @@ func main() {
 	// initialize tracing
 	//
 
-	{
+	if app.cfg.jaegerEnable {
 		options := oteltrace.TraceOptions{
 			DefaultService:     me,
 			NoopTracerProvider: !app.cfg.jaegerEnable,
@@ -114,6 +114,8 @@ func main() {
 		defer cancel()
 
 		app.tracer = tracer
+	} else {
+		app.tracer = oteltrace.NewNoopTracer()
 	}
 
 	//
@@ -132,7 +134,8 @@ func newApp(me string, createSqsClient newSqsClientFunc, createSnsClient newSnsC
 
 	app := &application{
 		cfg: cfg,
-		m:   newMetrics(prom, cfg.metricsNamespace, cfg.metricsBucketsLatency),
+		m: newMetrics(prom, cfg.dogstatsdEnable, cfg.dogstatsdDebug,
+			cfg.metricsNamespace, cfg.metricsBucketsLatency),
 
 		// this bogus tracer will be replaced by actual tracer in main().
 		// we assign this bogus tracer here just to prevents crashes when testing.
@@ -160,8 +163,10 @@ func run(app *application) {
 		serveHealth(app, app.cfg.healthAddr, app.cfg.healthPath)
 	}
 
-	if app.cfg.metricsAddr != "" {
-		go serveMetrics(app.prom, app.cfg.metricsAddr, app.cfg.metricsPath)
+	if app.cfg.prometheusEnable {
+		if app.cfg.metricsAddr != "" {
+			go serveMetrics(app.prom, app.cfg.metricsAddr, app.cfg.metricsPath)
+		}
 	}
 
 	for _, q := range app.queues {
@@ -204,13 +209,13 @@ func reader(q *applicationQueue, readerID int, m *metrics) {
 		// read message from sqs queue
 		//
 
-		m.receive.WithLabelValues(queueID).Inc()
+		m.incReceive(queueID)
 
 		resp, errRecv := q.sqs.ReceiveMessage(context.TODO(), input)
 		if errRecv != nil {
 			log.Printf("%s: sqs.ReceiveMessage: error: %v, sleeping %v",
 				me, errRecv, q.conf.ErrorCooldownRead)
-			m.receiveError.WithLabelValues(queueID).Inc()
+			m.incReceiveError(queueID)
 			time.Sleep(q.conf.ErrorCooldownRead)
 			q.putStatus(errRecv)
 			continue
@@ -227,7 +232,7 @@ func reader(q *applicationQueue, readerID int, m *metrics) {
 		}
 
 		if count == 0 {
-			m.receiveEmpty.WithLabelValues(queueID).Inc()
+			m.incReceiveEmpty(queueID)
 			if debug {
 				log.Printf("%s: empty receive, sleeping %v",
 					me, q.conf.EmptyReceiveCooldown)
@@ -239,14 +244,14 @@ func reader(q *applicationQueue, readerID int, m *metrics) {
 			continue
 		}
 
-		m.receiveMessages.WithLabelValues(queueID).Add(float64(count))
+		m.incReceiveMessages(queueID, float64(count))
 
 		for i, msg := range resp.Messages {
 			if debug {
 				log.Printf("%s: %d/%d MessageId: %s", me, i+1, count, *msg.MessageId)
 			}
 			q.ch <- message{sqs: msg, received: time.Now()}
-			m.buffer.WithLabelValues(queueID).Inc()
+			m.gaugeBuffer(queueID, float64(len(q.ch)))
 		}
 	}
 
@@ -272,7 +277,7 @@ func writer(q *applicationQueue, writerID int, metric *metrics, tracer trace.Tra
 		//
 
 		sqsMsg := <-q.ch
-		metric.buffer.WithLabelValues(queueID).Dec()
+		metric.gaugeBuffer(queueID, float64(len(q.ch)))
 		//m := sqsMsg.sqs
 
 		handleMessage(me, q, sqsMsg, metric, tracer, carrierSQS, carrierSNS, jaegerEnabled)
@@ -386,7 +391,7 @@ func snsPublish(ctx context.Context, me string, q *applicationQueue, sqsMsg mess
 	if errPub != nil {
 		log.Printf("%s: sns.Publish: error: %v, sleeping %v",
 			me, errPub, q.conf.ErrorCooldownWrite)
-		metric.publishError.WithLabelValues(queueID).Inc()
+		metric.incPublishError(queueID)
 		span.SetStatus(codes.Error, errPub.Error())
 		time.Sleep(q.conf.ErrorCooldownWrite)
 		q.putStatus(errPub)
@@ -417,7 +422,7 @@ func sqsDelete(ctx context.Context, me string, q *applicationQueue, sqsMsg messa
 	if errDelete != nil {
 		log.Printf("%s: MessageId: %s - sqs.DeleteMessage: error: %v, sleeping %v",
 			me, *m.MessageId, errDelete, q.conf.ErrorCooldownDelete)
-		metric.deleteError.WithLabelValues(queueID).Inc()
+		metric.incDeleteError(queueID)
 		time.Sleep(q.conf.ErrorCooldownDelete)
 		q.putStatus(errDelete)
 		return false

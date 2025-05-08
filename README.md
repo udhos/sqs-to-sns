@@ -40,7 +40,7 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 * Messages can be moved both across different aws regions and across distinct aws accounts.
 * Standard aws credentials are supported, including static iam users, EC2 instance profiles and iam roles.
 * Messages attributes can be copied from queue to topic.
-* Metrics are exposed in a Prometheus endpoint, providing simple and easy monitoring and alerting, with rich metrics including volume, errors and latency.
+* Metrics are exposed in a Prometheus endpoint, or sent to Datadog Dogstatsd Agent, providing simple and easy monitoring and alerting, with rich metrics including volume, errors and latency.
 * Open Telemetry traces can be directed to a Jaeger collector, keeping track of messaging flows that cross SQS/SNS boundaries in distributed applications.
 * A health check endpoint is exposed, handy for kubernetes probes, facilitating auto-repair for high resilience and availability.
 * Find prebuilt static executable binary files in the releases page: https://github.com/udhos/sqs-to-sns/releases
@@ -323,3 +323,15 @@ helm upgrade sqs-to-sns ./charts/sqs-to-sns --values charts/sqs-to-sns/values.ya
 ```
 helm uninstall sqs-to-sns
 ```
+
+# Datadog
+
+Image tags suffixed with `-datadog` are instrumented with Datadog [Orchestrion](https://github.com/DataDog/orchestrion).
+
+See https://hub.docker.com/r/udhos/sqs-to-sns/tags
+
+## Example
+
+Install latest image instrumented with support for Datadog:
+
+    helm upgrade --install sqs-to-sns-dd ./charts/sqs-to-sns --set image.tag=latest-datadog
