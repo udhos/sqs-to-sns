@@ -174,7 +174,8 @@ func run(app *application) {
 			go reader(q, i, app.m)
 		}
 		for i := 1; i <= q.conf.Writers; i++ {
-			go writer(q, i, app.m, app.tracer, app.cfg.jaegerEnable)
+			go writer(q, i, app.m, app.tracer, app.cfg.jaegerEnable,
+				app.cfg.ignoreSqsAttributeLimit)
 		}
 	}
 }
@@ -257,7 +258,8 @@ func reader(q *applicationQueue, readerID int, m *metrics) {
 
 }
 
-func writer(q *applicationQueue, writerID int, metric *metrics, tracer trace.Tracer, jaegerEnabled bool) {
+func writer(q *applicationQueue, writerID int, metric *metrics,
+	tracer trace.Tracer, jaegerEnabled, ignoreSqsAttributeLimit bool) {
 
 	debug := *q.conf.Debug
 	queueID := q.conf.ID
@@ -280,14 +282,17 @@ func writer(q *applicationQueue, writerID int, metric *metrics, tracer trace.Tra
 		metric.gaugeBuffer(queueID, float64(len(q.ch)))
 		//m := sqsMsg.sqs
 
-		handleMessage(me, q, sqsMsg, metric, tracer, carrierSQS, carrierSNS, jaegerEnabled)
+		handleMessage(me, q, sqsMsg, metric, tracer, carrierSQS, carrierSNS,
+			jaegerEnabled, ignoreSqsAttributeLimit)
 	}
 
 }
 
-func handleMessage(me string, q *applicationQueue, sqsMsg message, metric *metrics,
-	tracer trace.Tracer, carrierSQS *otelsqs.SqsCarrierAttributes, carrierSNS *otelsns.SnsCarrierAttributes,
-	jaegerEnabled bool) {
+func handleMessage(me string, q *applicationQueue, sqsMsg message,
+	metric *metrics, tracer trace.Tracer,
+	carrierSQS *otelsqs.SqsCarrierAttributes,
+	carrierSNS *otelsns.SnsCarrierAttributes,
+	jaegerEnabled, ignoreSqsAttributeLimit bool) {
 
 	debug := *q.conf.Debug
 	//copyAttributes := *q.conf.CopyAttributes
@@ -320,7 +325,8 @@ func handleMessage(me string, q *applicationQueue, sqsMsg message, metric *metri
 	// publish message to SNS topic
 	//
 
-	if published := snsPublish(ctxNew, me, q, sqsMsg, metric, tracer, carrierSNS, jaegerEnabled); !published {
+	if published := snsPublish(ctxNew, me, q, sqsMsg, metric, tracer,
+		carrierSNS, jaegerEnabled, ignoreSqsAttributeLimit); !published {
 		return
 	}
 
@@ -349,7 +355,7 @@ func handleMessage(me string, q *applicationQueue, sqsMsg message, metric *metri
 
 func snsPublish(ctx context.Context, me string, q *applicationQueue, sqsMsg message,
 	metric *metrics, tracer trace.Tracer, carrierSNS *otelsns.SnsCarrierAttributes,
-	jaegerEnabled bool) bool {
+	jaegerEnabled, ignoreSqsAttributeLimit bool) bool {
 
 	ctxNew, span := tracer.Start(ctx, "snsPublish")
 	defer span.End()
@@ -380,7 +386,7 @@ func snsPublish(ctx context.Context, me string, q *applicationQueue, sqsMsg mess
 		input.MessageAttributes = attr
 	}
 
-	if jaegerEnabled {
+	if jaegerEnabled && (ignoreSqsAttributeLimit || len(m.MessageAttributes) < 10) {
 		//
 		// Inject trace context into SNS message attributes
 		//

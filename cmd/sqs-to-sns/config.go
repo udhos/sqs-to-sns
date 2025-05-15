@@ -37,10 +37,11 @@ type config struct {
 	queueListFile string
 	queues        []queueConfig
 
-	jaegerEnable     bool
-	prometheusEnable bool
-	dogstatsdEnable  bool
-	dogstatsdDebug   bool
+	jaegerEnable            bool
+	ignoreSqsAttributeLimit bool
+	prometheusEnable        bool
+	dogstatsdEnable         bool
+	dogstatsdDebug          bool
 
 	healthAddr string
 	healthPath string
@@ -77,10 +78,11 @@ func newConfig(me string) config {
 		// per-queue values
 		queueListFile: env.String("QUEUES", "queues.yaml"),
 
-		jaegerEnable:     env.Bool("JAEGER_ENABLE", false),
-		prometheusEnable: env.Bool("PROMETHEUS_ENABLE", true),
-		dogstatsdEnable:  env.Bool("DOGSTATSD_ENABLE", true),
-		dogstatsdDebug:   env.Bool("DOGSTATSD_DEBUG", false),
+		jaegerEnable:            env.Bool("JAEGER_ENABLE", false),
+		ignoreSqsAttributeLimit: env.Bool("IGNORE_SQS_ATTRIBUTE_LIMIT", false),
+		prometheusEnable:        env.Bool("PROMETHEUS_ENABLE", true),
+		dogstatsdEnable:         env.Bool("DOGSTATSD_ENABLE", true),
+		dogstatsdDebug:          env.Bool("DOGSTATSD_DEBUG", false),
 
 		healthAddr: env.String("HEALTH_ADDR", ":8888"),
 		healthPath: env.String("HEALTH_PATH", "/health"),

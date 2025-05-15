@@ -70,6 +70,7 @@ configMapProperties:
   # tracing
   #
   JAEGER_ENABLE: "false"
+  IGNORE_SQS_ATTRIBUTE_LIMIT: "false"
   OTEL_TRACES_SAMPLER: parentbased_traceidratio
   OTEL_TRACES_SAMPLER_ARG: "0.01"
   #
