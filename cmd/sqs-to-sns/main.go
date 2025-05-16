@@ -295,19 +295,12 @@ func handleMessage(me string, q *applicationQueue, sqsMsg message,
 	jaegerEnabled, ignoreSqsAttributeLimit bool) {
 
 	debug := *q.conf.Debug
-	//copyAttributes := *q.conf.CopyAttributes
 	queueID := q.conf.ID
 	m := &sqsMsg.sqs
 
 	//
 	// Retrieve trace context from SQS message attributes
 	//
-
-	/*
-		if m.MessageAttributes == nil {
-			m.MessageAttributes = make(map[string]types.MessageAttributeValue)
-		}
-	*/
 
 	ctx := carrierSQS.Extract(context.TODO(), m.MessageAttributes)
 
@@ -317,7 +310,8 @@ func handleMessage(me string, q *applicationQueue, sqsMsg message,
 	if debug {
 		log.Printf("%s: MessageId: %s: traceID:%v", me, *m.MessageId, span.SpanContext().TraceID().String())
 		log.Printf("%s: MessageId: %s: Attributes:%v", me, *m.MessageId, toJSON(m.Attributes))
-		log.Printf("%s: MessageId: %s: MessageAttributes:%v", me, *m.MessageId, toJSON(m.MessageAttributes))
+		log.Printf("%s: MessageId: %s: MessageAttributes: count=%d: %v",
+			me, aws.ToString(m.MessageId), len(m.MessageAttributes), toJSON(m.MessageAttributes))
 		log.Printf("%s: MessageId: %s: Body:%v", me, *m.MessageId, *m.Body)
 	}
 
@@ -391,6 +385,12 @@ func snsPublish(ctx context.Context, me string, q *applicationQueue, sqsMsg mess
 		// Inject trace context into SNS message attributes
 		//
 		carrierSNS.Inject(ctxNew, input.MessageAttributes)
+	}
+
+	if debug {
+		log.Printf("%s: MessageId: %s: MessageAttributes: count=%d: %v",
+			me, aws.ToString(m.MessageId), len(input.MessageAttributes),
+			toJSON(input.MessageAttributes))
 	}
 
 	result, errPub := q.sns.Publish(context.TODO(), input)
