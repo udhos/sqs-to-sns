@@ -4,7 +4,7 @@ go install golang.org/x/vuln/cmd/govulncheck@latest
 go install golang.org/x/tools/cmd/deadcode@latest
 go install github.com/mgechev/revive@latest
 
-go install github.com/DataDog/orchestrion@v1.3.1
+go install github.com/DataDog/orchestrion@v1.5.0
 
 echo "adding orchestrion pin"
 orchestrion pin
