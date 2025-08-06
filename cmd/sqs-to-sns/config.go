@@ -26,6 +26,7 @@ type queueConfig struct {
 	ErrorCooldownDelete  time.Duration `yaml:"error_cooldown_delete"`
 	EmptyReceiveCooldown time.Duration `yaml:"empty_receive_cooldown"`
 	CopyAttributes       *bool         `yaml:"copy_attributes"`
+	CopyMesssageGroupID  *bool         `yaml:"copy_message_group_id"`
 	Debug                *bool         `yaml:"debug"`
 	MaxNumberOfMessages  *int32        `yaml:"max_number_of_messages"` // 1..10 (default 10)
 	WaitTimeSeconds      *int32        `yaml:"wait_time_seconds"`      // 0..20 (default 20)
@@ -62,6 +63,7 @@ type config struct {
 	errorCooldownDelete  time.Duration
 	emptyReceiveCooldown time.Duration
 	copyAttributes       bool
+	copyMesssageGroupID  bool
 	debug                bool
 	maxNumberOfMessages  int32 // 1..10 (default 10)
 	waitTimeSeconds      int32 // 0..20 (default 20)
@@ -103,6 +105,7 @@ func newConfig(me string) config {
 		errorCooldownDelete:  env.Duration("DELETE_ERROR_COOLDOWN", 10*time.Second),
 		emptyReceiveCooldown: env.Duration("EMPTY_RECEIVE_COOLDOWN", 10*time.Second),
 		copyAttributes:       env.Bool("COPY_ATTRIBUTES", true),
+		copyMesssageGroupID:  env.Bool("COPY_MESSAGE_GROUP_ID", true),
 		debug:                env.Bool("DEBUG", true),
 		maxNumberOfMessages:  int32(env.Int("MAX_NUMBER_OF_MESSAGES", 10)), // 1..10 (default 10)
 		waitTimeSeconds:      int32(env.Int("WAIT_TIME_SECONDS", 20)),      // 0..20 (default 20)
@@ -170,6 +173,10 @@ func queueDefaults(q queueConfig, cfg config) queueConfig {
 	if q.CopyAttributes == nil {
 		b := cfg.copyAttributes
 		q.CopyAttributes = &b
+	}
+	if q.CopyMesssageGroupID == nil {
+		b := cfg.copyMesssageGroupID
+		q.CopyMesssageGroupID = &b
 	}
 	if q.Debug == nil {
 		b := cfg.debug

@@ -17,6 +17,7 @@
   #error_cooldown_delete: 10s
   #empty_receive_cooldown: 10s
   #copy_attributes: true
+  #copy_message_group_id: true
   #debug: true
 - id: q2
   #
@@ -37,4 +38,5 @@
   #error_cooldown_delete: 10s
   #empty_receive_cooldown: 10s
   #copy_attributes: true
+  #copy_message_group_id: true
   #debug: true

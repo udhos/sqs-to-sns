@@ -114,17 +114,18 @@ configMapProperties:
   #
   #QUEUE_ROLE_ARN: arn:aws:iam::111111111111:role/sqs_consumer
   #TOPIC_ROLE_ARN: arn:aws:iam::222222222222:role/sns_producer
-  READERS: "3"                 # number of goroutines reading from SQS queue
-  WRITERS: "45"                # number of goroutines writing to SNS topic (recommended: 15 * READERS)
-  BUFFER: "90"                 # buffer size between readers and writers (recommended: 30 * READERS)
-  READ_ERROR_COOLDOWN: 10s     # cooldown holdtime after read errors
-  WRITE_ERROR_COOLDOWN: 10s    # cooldown holdtime after write errors
-  DELETE_ERROR_COOLDOWN: 10s   # cooldown holdtime after delete errors
-  EMPTY_RECEIVE_COOLDOWN: 10s  # cooldown holdtime after empty receive
-  COPY_ATTRIBUTES: "true"      # enable copying of message attributes from SQS message to SNS message
-  DEBUG: "true"                # enable debug logs
-  MAX_NUMBER_OF_MESSAGES: "10" # 1..10 (default 10)
-  WAIT_TIME_SECONDS: "20"      # 0..20 (default 20)
+  READERS: "3"                  # number of goroutines reading from SQS queue
+  WRITERS: "45"                 # number of goroutines writing to SNS topic (recommended: 15 * READERS)
+  BUFFER: "90"                  # buffer size between readers and writers (recommended: 30 * READERS)
+  READ_ERROR_COOLDOWN: 10s      # cooldown holdtime after read errors
+  WRITE_ERROR_COOLDOWN: 10s     # cooldown holdtime after write errors
+  DELETE_ERROR_COOLDOWN: 10s    # cooldown holdtime after delete errors
+  EMPTY_RECEIVE_COOLDOWN: 10s   # cooldown holdtime after empty receive
+  COPY_ATTRIBUTES: "true"       # enable copying of message attributes from SQS message to SNS message
+  COPY_MESSAGE_GROUP_ID: "true" # enable copying of message group id from SQS message to SNS message
+  DEBUG: "true"                 # enable debug logs
+  MAX_NUMBER_OF_MESSAGES: "10"  # 1..10 (default 10)
+  WAIT_TIME_SECONDS: "20"       # 0..20 (default 20)
 
 configDir:
   queues.yaml: |

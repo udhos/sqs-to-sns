@@ -127,6 +127,7 @@ export WRITE_ERROR_COOLDOWN=10s   ;# cooldown holdtime after write errors
 export DELETE_ERROR_COOLDOWN=10s  ;# cooldown holdtime after delete errors
 export EMPTY_RECEIVE_COOLDOWN=10s ;# cooldown holdtime after empty receive
 export COPY_ATTRIBUTES=true       ;# enable copying of message attributes from SQS message to SNS message
+export COPY_MESSAGE_GROUP_ID=true ;# enable copying of message group id from SQS message to SNS message
 export DEBUG=true                 ;# enable debug logs
 export MAX_NUMBER_OF_MESSAGES=10  ;# 1..10 (default 10)
 export WAIT_TIME_SECONDS=20       ;# 0..20 (default 20)
@@ -155,6 +156,7 @@ $ cat queues.yaml
   #error_cooldown_delete: 10s
   #empty_receive_cooldown: 10s
   #copy_attributes: true
+  #copy_message_group_id: true
   #debug: true
   #max_number_of_messages: "10" # 1..10 (default 10)
   #wait_time_seconds: "20"      # 0..20 (default 20)
@@ -177,6 +179,7 @@ $ cat queues.yaml
   #error_cooldown_delete: 10s
   #empty_receive_cooldown: 10s
   #copy_attributes: true
+  #copy_message_group_id: true
   #debug: true
   #max_number_of_messages: "10" # 1..10 (default 10)
   #wait_time_seconds: "20"      # 0..20 (default 20)

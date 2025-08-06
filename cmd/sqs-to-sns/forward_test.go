@@ -40,6 +40,7 @@ func TestForward(t *testing.T) {
 	os.Setenv("DELETE_ERROR_COOLDOWN", "10s")
 	os.Setenv("EMPTY_RECEIVE_COOLDOWN", "10s")
 	os.Setenv("COPY_ATTRIBUTES", "true")
+	os.Setenv("COPY_MESSAGE_GROUP_ID", "true")
 	os.Setenv("DEBUG", "true")
 
 	//
@@ -48,13 +49,15 @@ func TestForward(t *testing.T) {
 
 	const messageCount = 100
 
+	const messageGroupID = "test-group"
+
 	mockSqs := &mockSqsClient{messages: map[string]*mockSqsMessage{}}
 	for i := 0; i < messageCount; i++ {
 		m := strconv.Itoa(i)
-		mockSqs.messages[m] = &mockSqsMessage{body: m}
+		mockSqs.messages[m] = &mockSqsMessage{body: m, messageGroupID: messageGroupID}
 	}
 
-	mockSns := &mockSnsClient{}
+	mockSns := &mockSnsClient{messageGroupID: map[int]string{}}
 
 	newMockSqsClient := func(_, _, _, _ string) sqsClient {
 		return mockSqs
@@ -111,11 +114,28 @@ func TestForward(t *testing.T) {
 		t.Errorf("wrong remaining sqs messsages: expected=%d got=%d",
 			0, remain)
 	}
+
+	//
+	// check that all published messages have received the message group id
+	//
+
+	if len(mockSns.messageGroupID) != messageCount {
+		t.Errorf("wrong number of message group ids: expected=%d got=%d",
+			messageCount, len(mockSns.messageGroupID))
+	}
+
+	for id, v := range mockSns.messageGroupID {
+		if v != messageGroupID {
+			t.Errorf("wrong message group id: message=%d expected='%s' got='%s'",
+				id, messageGroupID, v)
+		}
+	}
 }
 
 type mockSqsMessage struct {
-	body     string
-	received time.Time
+	body           string
+	received       time.Time
+	messageGroupID string
 }
 
 func (m *mockSqsMessage) visible() bool {
@@ -148,6 +168,7 @@ func (c *mockSqsClient) ReceiveMessage( /*ctx*/ _ context.Context, params *sqs.R
 			Body:          aws.String(v.body),
 			MessageId:     aws.String(k),
 			ReceiptHandle: aws.String(k),
+			Attributes:    map[string]string{"MessageGroupId": v.messageGroupID},
 		}
 		out.Messages = append(out.Messages, m)
 		v.received = time.Now() // make message invisible for 30s
@@ -155,7 +176,9 @@ func (c *mockSqsClient) ReceiveMessage( /*ctx*/ _ context.Context, params *sqs.R
 	return out, nil
 }
 
-func (c *mockSqsClient) DeleteMessage(_ /*ctx*/ context.Context, params *sqs.DeleteMessageInput, _ /*optFns*/ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+func (c *mockSqsClient) DeleteMessage(_ /*ctx*/ context.Context,
+	params *sqs.DeleteMessageInput,
+	_ /*optFns*/ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	delete(c.messages, *params.ReceiptHandle)
@@ -164,8 +187,9 @@ func (c *mockSqsClient) DeleteMessage(_ /*ctx*/ context.Context, params *sqs.Del
 }
 
 type mockSnsClient struct {
-	publishes int
-	lock      sync.Mutex
+	publishes      int
+	messageGroupID map[int]string
+	lock           sync.Mutex
 }
 
 func (c *mockSnsClient) getPublishes() int {
@@ -174,11 +198,18 @@ func (c *mockSnsClient) getPublishes() int {
 	return c.publishes
 }
 
-func (c *mockSnsClient) Publish(_ /*ctx*/ context.Context, _ /*params*/ *sns.PublishInput, _ /*optFns*/ ...func(*sns.Options)) (*sns.PublishOutput, error) {
+func (c *mockSnsClient) Publish(_ /*ctx*/ context.Context,
+	params *sns.PublishInput,
+	_ /*optFns*/ ...func(*sns.Options)) (*sns.PublishOutput, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.publishes++
-	id := "mockSnsClient.fake-publish-id"
+	if messageGroupID := params.MessageGroupId; messageGroupID != nil {
+		c.messageGroupID[c.publishes] = aws.ToString(messageGroupID)
+	} else {
+		c.messageGroupID[c.publishes] = ""
+	}
+	id := strconv.Itoa(c.publishes)
 	out := &sns.PublishOutput{
 		MessageId: aws.String(id),
 	}
