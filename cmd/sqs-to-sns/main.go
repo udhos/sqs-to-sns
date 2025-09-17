@@ -384,8 +384,9 @@ func snsPublish(ctx context.Context, me string, q *applicationQueue, sqsMsg mess
 		//
 		// copy message group id from SQS to SNS
 		//
-		messageGroupID := m.Attributes["MessageGroupId"]
-		input.MessageGroupId = aws.String(messageGroupID)
+		if messageGroupID := m.Attributes["MessageGroupId"]; messageGroupID != "" {
+			input.MessageGroupId = aws.String(messageGroupID)
+		}
 	}
 
 	if jaegerEnabled && (ignoreSqsAttributeLimit || len(m.MessageAttributes) < 10) {
