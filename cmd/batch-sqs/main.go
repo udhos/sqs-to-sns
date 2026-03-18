@@ -101,7 +101,7 @@ func main() {
 
 	body := fmt.Sprintf("batch-sqs traceID:%s", traceID)
 
-	for i := 0; i < batch; i++ {
+	for i := range batch {
 		id := strconv.Itoa(i)
 		m := types.SendMessageBatchRequestEntry{
 			MessageBody:       aws.String(body),

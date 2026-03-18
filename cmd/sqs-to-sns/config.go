@@ -137,7 +137,7 @@ func loadQueueConf(cfg config) []queueConfig {
 	return queues
 }
 
-func toJSON(v interface{}) string {
+func toJSON(v any) string {
 	b, _ := json.Marshal(v)
 	return string(b)
 }

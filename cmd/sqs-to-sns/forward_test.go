@@ -52,7 +52,7 @@ func TestForward(t *testing.T) {
 	const messageGroupID = "test-group"
 
 	mockSqs := &mockSqsClient{messages: map[string]*mockSqsMessage{}}
-	for i := 0; i < messageCount; i++ {
+	for i := range messageCount {
 		m := strconv.Itoa(i)
 		mockSqs.messages[m] = &mockSqsMessage{body: m, messageGroupID: messageGroupID}
 	}

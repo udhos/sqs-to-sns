@@ -28,9 +28,7 @@ func TestHealth(t *testing.T) {
 	var wg sync.WaitGroup
 
 	for range 10000 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			resp, err := http.Get("http://localhost:8888/health")
 			if err != nil {
 				t.Errorf("error: %v", err)
@@ -39,7 +37,7 @@ func TestHealth(t *testing.T) {
 			if resp.StatusCode != 200 {
 				t.Errorf("status: %d", resp.StatusCode)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
