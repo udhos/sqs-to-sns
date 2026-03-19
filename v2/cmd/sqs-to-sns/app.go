@@ -144,35 +144,35 @@ func (app *application) startPublisher(q *queue, root bool) {
 
 	defer q.publishers.Add(-1)
 
-	const heartbeat = 500 * time.Millisecond
-
-	timer := time.NewTimer(heartbeat)
-
-	for {
-		select {
-		case msg := <-q.forwardCh:
-			slog.Info(me, "message", aws.ToString(msg.sqsMessage.MessageId))
-			q.publishPool.add(msg)
-
-			for {
-				// attempt to get full 10-message batch
-				m, found := q.publishPool.getFullBatch()
-				if !found {
-					break // no full batch
+	if root {
+		// Spawn global periodic flusher.
+		// This is the ONLY place where a time-based flush happens.
+		// It ensures we eventually flush partial batches.
+		const heartbeat = 500 * time.Millisecond
+		go func() {
+			ticker := time.NewTicker(heartbeat)
+			for range ticker.C {
+				m := q.publishPool.getAvailable()
+				if len(m) > 0 {
+					app.batchPublish(q, m)
 				}
-				// got a full batch
-				app.batchPublish(q, m)
-				timer.Reset(heartbeat) // reset after sending batch
 			}
-		case <-timer.C:
-			// 500ms tick arrived before a full batch formed,
-			// we will drain anything we have.
-			m := q.publishPool.getAvailable()
-			if len(m) > 0 {
-				// got something to publish
-				app.batchPublish(q, m)
+		}()
+	}
+
+	for msg := range q.forwardCh {
+		slog.Info(me, "message", aws.ToString(msg.sqsMessage.MessageId))
+		q.publishPool.add(msg)
+
+		// drain full batches.
+		for {
+			// attempt to get full 10-message batch
+			m, found := q.publishPool.getFullBatch()
+			if !found {
+				break // no full batch
 			}
-			timer.Reset(heartbeat) // reset on every tick
+			// got a full batch
+			app.batchPublish(q, m)
 		}
 
 		//
