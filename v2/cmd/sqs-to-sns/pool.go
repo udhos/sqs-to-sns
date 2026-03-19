@@ -30,6 +30,7 @@ func (p *pool) add(m message) {
 }
 
 func (p *pool) getFullBatch() ([]message, bool) {
+	fatalf("return batch with less than 10 items if needed to fit total message payload in sns limit 262144")
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	found := len(p.buf) >= 10
@@ -40,6 +41,7 @@ func (p *pool) getFullBatch() ([]message, bool) {
 }
 
 func (p *pool) getAvailable() []message {
+	fatalf("return batch with less than avail items if needed to fit total message payload in sns limit 262144")
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	size := min(len(p.buf), 10)

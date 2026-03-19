@@ -17,10 +17,10 @@ func newApp(cfg config, receive receiver) *application {
 
 	for _, queueCfg := range cfg.queues {
 		q := &queue{
-			queueCfg:  queueCfg,
-			forwardCh: make(chan message, queueCfg.BufferSizeForward),
-			deleteCh:  make(chan message, queueCfg.BufferSizeDelete),
-			publish:   newPool(),
+			queueCfg:    queueCfg,
+			forwardCh:   make(chan message, queueCfg.BufferSizeForward),
+			deleteCh:    make(chan message, queueCfg.BufferSizeDelete),
+			publishPool: newPool(),
 		}
 		app.queues = append(app.queues, q)
 	}
@@ -138,25 +138,25 @@ func (app *application) startPublisher(q *queue, root bool) {
 		select {
 		case msg := <-q.forwardCh:
 			slog.Info(me, "message", aws.ToString(msg.sqsMessage.MessageId))
-			q.publish.add(msg)
+			q.publishPool.add(msg)
 
 			for {
 				// attempt to get full 10-message batch
-				m, found := q.publish.getFullBatch()
+				m, found := q.publishPool.getFullBatch()
 				if !found {
 					break // no full batch
 				}
 				// got a full batch
-				batchPublish(q, m)
+				app.batchPublish(q, m)
 				timer.Reset(heartbeat) // reset after sending batch
 			}
 		case <-timer.C:
 			// 500ms tick arrived before a full batch formed,
 			// we will drain anything we have.
-			m := q.publish.getAvailable()
+			m := q.publishPool.getAvailable()
 			if len(m) > 0 {
 				// got something to publish
-				batchPublish(q, m)
+				app.batchPublish(q, m)
 			}
 			timer.Reset(heartbeat) // reset on every tick
 		}
@@ -184,7 +184,7 @@ func (app *application) startPublisher(q *queue, root bool) {
 			}
 		} else {
 			// we are non-root, we might exit. root never exits.
-			if load < watermarkLow && q.publish.isEmpty() {
+			if load < watermarkLow && q.publishPool.isEmpty() {
 				// incoming channel is getting empty AND our pool is empty, then exit.
 				break
 			}
@@ -197,10 +197,16 @@ func channelLoad(ch chan message) float32 {
 	return float32(len(ch)) / float32(cap(ch))
 }
 
-func batchPublish(q *queue, msg []message) {
-	fatalf("call batch publisher: %v", msg)
-	for _, m := range msg {
-		fatalf("only published messages should be sent to deleteCh")
+//const maxPublishPayload = 262144
+
+func (app *application) batchPublish(q *queue, msg []message) {
+
+	pub, errPub := app.publish.publish(q, msg)
+	if errPub != nil {
+		return
+	}
+
+	for _, m := range pub {
 		q.deleteCh <- m
 	}
 }
@@ -217,6 +223,7 @@ func (app *application) startJanitor(q *queue, root bool) {
 
 type application struct {
 	receive receiver
+	publish publisher
 	cfg     config
 	queues  []*queue
 }
@@ -226,13 +233,17 @@ type receiver interface {
 	stop(q *queue) error
 }
 
+type publisher interface {
+	publish(q *queue, messages []message) ([]message, error)
+}
+
 type queue struct {
-	queueCfg   queueConfig
-	forwardCh  chan message
-	deleteCh   chan message
-	readers    atomic.Int64
-	publishers atomic.Int64
-	publish    *pool
+	queueCfg    queueConfig
+	forwardCh   chan message
+	deleteCh    chan message
+	readers     atomic.Int64
+	publishers  atomic.Int64
+	publishPool *pool
 }
 
 type message struct {
