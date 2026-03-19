@@ -2,7 +2,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -10,11 +12,39 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	_ "github.com/KimMachineGun/automemlimit"
+	"github.com/udhos/boilerplate/boilerplate"
 )
 
 func main() {
 
+	//
+	// parse cmd line
+	//
+
+	var showVersion bool
+	flag.BoolVar(&showVersion, "version", showVersion, "show version")
+	flag.Parse()
+
+	//
+	// show version
+	//
+
 	me := filepath.Base(os.Args[0])
+
+	{
+		v := boilerplate.LongVersion(me + " version=" + version)
+		if showVersion {
+			fmt.Println(v)
+			return
+		}
+		log.Print(v)
+	}
+
+	//
+	// run application
+	//
 
 	cfg := newConfig(me)
 
