@@ -16,13 +16,6 @@ func newPool() *pool {
 	}
 }
 
-func (p *pool) isEmpty() bool {
-	p.mu.Lock()
-	empty := len(p.buf) == 0
-	p.mu.Unlock()
-	return empty
-}
-
 func (p *pool) add(m message) {
 	p.mu.Lock()
 	p.buf = append(p.buf, m)

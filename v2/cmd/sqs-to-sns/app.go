@@ -200,8 +200,8 @@ func (app *application) startPublisher(q *queue, root bool) {
 		}
 
 		// we are non-root, we might exit. root never exits.
-		if load < watermarkLow && q.publishPool.isEmpty() {
-			// incoming channel is getting empty AND our pool is empty, then exit.
+		if load < watermarkLow {
+			// incoming channel is getting empty, then exit.
 			break
 		}
 
