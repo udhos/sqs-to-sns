@@ -138,8 +138,6 @@ const (
 )
 
 func (app *application) startPublisher(q *queue, root bool) {
-	const me = "publisher"
-	slog.Info(me, "root", root)
 
 	defer q.publishers.Add(-1)
 
@@ -229,9 +227,8 @@ func (app *application) batchPublish(q *queue, msg []message) {
 	}
 }
 
-func (app *application) startJanitor(q *queue, root bool) {
+func (app *application) startJanitor(q *queue, _ bool) {
 	const me = "janitor"
-	slog.Info(me, "root", root)
 	for {
 		msg := <-q.deleteCh
 

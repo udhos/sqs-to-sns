@@ -38,7 +38,7 @@ func TestApp(t *testing.T) {
 		app.run()
 	}()
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	app.stopReaders()
 
