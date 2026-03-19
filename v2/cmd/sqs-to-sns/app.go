@@ -20,6 +20,7 @@ func newApp(cfg config, receive receiver) *application {
 			queueCfg:  queueCfg,
 			forwardCh: make(chan message, queueCfg.BufferSizeForward),
 			deleteCh:  make(chan message, queueCfg.BufferSizeDelete),
+			publish:   newPool(),
 		}
 		app.queues = append(app.queues, q)
 	}
@@ -82,7 +83,7 @@ func (app *application) startReader(q *queue, root bool) {
 		}
 
 		//
-		// now we have no messages on our handles.
+		// now we have no messages on our hands.
 		// we can scale up or down:
 		// root: might scale up by spawning sibling.
 		// non-root: might scale down by exiting.
@@ -119,12 +120,52 @@ func (app *application) startReader(q *queue, root bool) {
 func (app *application) startPublisher(q *queue, root bool) {
 	const me = "publisher"
 	slog.Info(me, "root", root)
+
+	const heartbeat = 500 * time.Millisecond
+
+	timer := time.NewTimer(heartbeat)
+
 	for {
-		msg := <-q.forwardCh
+		select {
+		case msg := <-q.forwardCh:
+			slog.Info(me, "message", aws.ToString(msg.sqsMessage.MessageId))
+			q.publish.add(msg)
 
-		slog.Info(me, "message", aws.ToString(msg.sqsMessage.MessageId))
+			for {
+				// attempt to get full 10-message batch
+				m, found := q.publish.getFullBatch()
+				if !found {
+					break // no full batch
+				}
+				// got a full batch
+				batchPublish(q, m)
+				timer.Reset(heartbeat) // reset after sending batch
+			}
+		case <-timer.C:
+			// 500ms tick arrived before a full batch formed,
+			// we will drain anything we have.
+			m := q.publish.getAvailable()
+			if len(m) > 0 {
+				// got something to publish
+				batchPublish(q, m)
+			}
+			timer.Reset(heartbeat) // reset on every tick
+		}
+		//
+		// TODO
+		// now we have no messages on our hands.
+		// we can scale up or down:
+		// root: might scale up by spawning sibling.
+		// non-root: might scale down by exiting.
+		//
+	}
+}
 
-		q.deleteCh <- msg
+func batchPublish(q *queue, msg []message) {
+	fatalf("call batch publisher: %v", msg)
+	for _, m := range msg {
+		fatalf("only published messages should be sent to deleteCh")
+		q.deleteCh <- m
 	}
 }
 
@@ -154,6 +195,7 @@ type queue struct {
 	forwardCh chan message
 	deleteCh  chan message
 	readers   atomic.Int64
+	publish   *pool
 }
 
 type message struct {

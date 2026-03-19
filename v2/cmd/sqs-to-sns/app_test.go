@@ -34,9 +34,9 @@ func TestApp(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	t.Errorf("test message propagation")
-
 	app.stopReaders()
+
+	t.Errorf("test message propagation")
 }
 
 type receiverMock struct {
