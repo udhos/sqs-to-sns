@@ -20,7 +20,7 @@ func newApp(cfg config, receive receiver, publish publisher) *application {
 			queueCfg:    queueCfg,
 			publishCh:   make(chan message, queueCfg.BufferSizePublish),
 			deleteCh:    make(chan message, queueCfg.BufferSizeDelete),
-			publishPool: newPool(),
+			publishPool: newPool(maxSnsPublishPayload),
 		}
 		app.queues = append(app.queues, q)
 	}

@@ -1,14 +1,18 @@
 package main
 
 import (
+	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
 // go test -count 1 -run '^TestPool$' ./...
 func TestPool(t *testing.T) {
-	p := newPool()
+	p := newPool(maxSnsPublishPayload)
 
 	{
 		m := p.getAvailable()
@@ -87,7 +91,7 @@ func TestPool(t *testing.T) {
 
 // go test -race -run '^TestPoolConcurrency$' ./...
 func TestPoolConcurrency(t *testing.T) {
-	p := newPool()
+	p := newPool(maxSnsPublishPayload)
 	var wg sync.WaitGroup
 
 	const (
@@ -147,4 +151,150 @@ func TestPoolConcurrency(t *testing.T) {
 	if expected != totalCollected {
 		t.Errorf("expected=%d totalCollected=%d", expected, totalCollected)
 	}
+}
+
+// go test -race -run '^TestPoolPayloadSize$' ./...
+func TestPoolPayloadSize(t *testing.T) {
+
+	//
+	// check avail api
+	//
+
+	m3 := createMessage(4)
+
+	p := newPool(10)
+
+	{
+		avail := p.getAvailable()
+		if len(avail) != 0 {
+			t.Fatalf("after 0 inserts, expecting 0 messages from getAvailable: %v", avail)
+		}
+	}
+	p.add(m3)
+	{
+		avail := p.getAvailable()
+		if len(avail) != 1 {
+			t.Fatalf("after 1 insert, expecting 1 messages from getAvailable: %v", avail)
+		}
+	}
+	p.add(m3)
+	p.add(m3)
+	{
+		avail := p.getAvailable()
+		if len(avail) != 2 {
+			t.Fatalf("after 2 inserts, expecting 2 messages from getAvailable: %v", avail)
+		}
+	}
+	p.add(m3)
+	p.add(m3)
+	p.add(m3)
+	{
+		avail := p.getAvailable()
+		if len(avail) != 2 {
+			t.Fatalf("after 3 inserts, expecting 2 messages from getAvailable: %v", avail)
+		}
+	}
+
+	//
+	// check full batch api
+	//
+
+	p = newPool(10) // reset pool
+
+	{
+		_, found := p.getFullBatch()
+		if found {
+			t.Fatalf("after 0 inserts, expecting NOT found from getFullBatch")
+		}
+	}
+	p.add(m3)
+	{
+		_, found := p.getFullBatch()
+		if found {
+			t.Fatalf("after 1 insert, expecting NOT found from getFullBatch")
+		}
+	}
+	p.add(m3)
+	{
+		full, found := p.getFullBatch()
+		if !found {
+			t.Fatalf("after 2 insert, expecting found from getFullBatch")
+		}
+		if len(full) != 2 {
+			t.Fatalf("after 2 inserts, expecting 2 messages from getFullBatch: %v", full)
+		}
+	}
+	p.add(m3)
+	p.add(m3)
+	p.add(m3)
+	{
+		full, found := p.getFullBatch()
+		if !found {
+			t.Fatalf("after 2 insert, expecting found from getFullBatch")
+		}
+		if len(full) != 2 {
+			t.Fatalf("after 2 inserts, expecting 2 messages from getFullBatch: %v", full)
+		}
+	}
+
+	//
+	// test exact byte limit
+	//
+
+	p = newPool(10)
+	m5 := createMessage(5)
+
+	p.add(m5)
+	{
+		_, found := p.getFullBatch()
+		if found {
+			t.Fatalf("after injecting 1 x 5 into 10, expecting NOT found from getFullBatch")
+		}
+	}
+
+	p.add(m5)
+	{
+		full, found := p.getFullBatch()
+		if !found {
+			t.Fatalf("after injecting 2 x 5 into 10, expecting found from getFullBatch")
+		}
+		if len(full) != 2 {
+			t.Fatalf("after injecting 2 x 5 into 10, expecting 2 messages from getFullBatch: %v", full)
+		}
+	}
+
+	p.add(m5)
+	p.add(m5)
+	p.add(m5)
+	{
+		full, found := p.getFullBatch()
+		if !found {
+			t.Fatalf("after injecting 3 x 5 into 10, expecting found from getFullBatch")
+		}
+		if len(full) != 2 {
+			t.Fatalf("after injecting 3 x 5 into 10, expecting 2 messages from getFullBatch: %v", full)
+		}
+	}
+
+}
+
+func createMessage(payloadSize int) message {
+
+	payload := strings.Repeat("a", payloadSize)
+
+	sqsMessage := &sqstypes.Message{
+		MessageId: aws.String(payload),
+		Body:      aws.String(payload),
+	}
+
+	const (
+		copyAttributes     = true
+		copyMessageGroupID = true
+	)
+
+	now := time.Now()
+
+	m := newMessage(sqsMessage, now, copyAttributes, copyMessageGroupID)
+
+	return m
 }
