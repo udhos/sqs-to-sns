@@ -4,17 +4,18 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	_ "github.com/KimMachineGun/automemlimit"
 	"github.com/udhos/boilerplate/boilerplate"
+	"github.com/udhos/boilerplate/envconfig"
 )
 
 func main() {
@@ -39,14 +40,23 @@ func main() {
 			fmt.Println(v)
 			return
 		}
-		log.Print(v)
+		slog.Info(v)
 	}
+
+	env := envconfig.NewSimple(me)
+
+	//
+	// log level and format
+	//
+	levelStr := strings.ToLower(env.String("LOG_LEVEL", "info"))
+	isJSON := env.Bool("LOG_JSON", false)
+	setupLogging(levelStr, isJSON)
 
 	//
 	// run application
 	//
 
-	cfg := newConfig(me)
+	cfg := newConfig(env)
 
 	app := newApp(cfg, &receiverReal{}, &publisherReal{})
 

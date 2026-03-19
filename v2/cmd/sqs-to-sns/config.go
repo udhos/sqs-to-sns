@@ -27,9 +27,7 @@ type queueConfig struct {
 	LimitPublishers   int    `yaml:"limit_publishers"`
 }
 
-func newConfig(sessionName string) config {
-
-	env := envconfig.NewSimple(sessionName)
+func newConfig(env *envconfig.Env) config {
 
 	cfg := config{
 		queueListFile: env.String("QUEUES", "queues.yaml"),
