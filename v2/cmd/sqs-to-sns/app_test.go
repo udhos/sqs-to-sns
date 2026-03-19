@@ -69,7 +69,7 @@ func (r *receiverMock) receive(_ *queue) ([]message, bool, error) {
 	return []message{
 		{
 			sqsMessage: &msg,
-			received:   time.Now(),
+			receivedAt: time.Now(),
 		},
 	}, stopped, nil
 }

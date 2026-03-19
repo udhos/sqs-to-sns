@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
 func newApp(cfg config, receive receiver, publish publisher) *application {
@@ -60,7 +59,6 @@ func (app *application) stopReaders() {
 
 func (app *application) startReader(q *queue, root bool) {
 	const me = "reader"
-	slog.Info(me, "root", root)
 
 	defer q.readers.Add(-1)
 
@@ -83,8 +81,6 @@ func (app *application) startReader(q *queue, root bool) {
 		emptyReceive := len(msg) == 0
 
 		for _, m := range msg {
-			slog.Info(me, "message", aws.ToString(m.sqsMessage.MessageId))
-
 			q.publishCh <- m
 		}
 
@@ -164,7 +160,6 @@ func (app *application) startPublisher(q *queue, root bool) {
 	}
 
 	for msg := range q.publishCh {
-		slog.Info(me, "message", aws.ToString(msg.sqsMessage.MessageId))
 		q.publishPool.add(msg)
 
 		// drain full batches.
@@ -215,8 +210,6 @@ func channelLoad(ch chan message) float32 {
 	return float32(len(ch)) / float32(cap(ch))
 }
 
-//const maxPublishPayload = 262144
-
 func (app *application) batchPublish(q *queue, msg []message) {
 
 	const me = "batchPublish"
@@ -240,7 +233,7 @@ func (app *application) startJanitor(q *queue, root bool) {
 	for {
 		msg := <-q.deleteCh
 
-		slog.Info(me, "message", aws.ToString(msg.sqsMessage.MessageId))
+		slog.Info(me, "messageId", aws.ToString(msg.sqsMessage.MessageId))
 	}
 }
 
@@ -267,9 +260,4 @@ type queue struct {
 	readers     atomic.Int64
 	publishers  atomic.Int64
 	publishPool *pool
-}
-
-type message struct {
-	sqsMessage *sqstypes.Message
-	received   time.Time
 }
