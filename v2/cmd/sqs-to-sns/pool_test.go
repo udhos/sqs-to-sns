@@ -167,14 +167,14 @@ func TestPoolPayloadSize(t *testing.T) {
 	{
 		avail := p.getAvailable()
 		if len(avail) != 0 {
-			t.Fatalf("after 0 inserts, expecting 0 messages from getAvailable: %v", avail)
+			t.Errorf("after 0 inserts, expecting 0 messages from getAvailable: %v", avail)
 		}
 	}
 	p.add(m3)
 	{
 		avail := p.getAvailable()
 		if len(avail) != 1 {
-			t.Fatalf("after 1 insert, expecting 1 messages from getAvailable: %v", avail)
+			t.Errorf("after 1 insert, expecting 1 messages from getAvailable: %v", avail)
 		}
 	}
 	p.add(m3)
@@ -182,7 +182,7 @@ func TestPoolPayloadSize(t *testing.T) {
 	{
 		avail := p.getAvailable()
 		if len(avail) != 2 {
-			t.Fatalf("after 2 inserts, expecting 2 messages from getAvailable: %v", avail)
+			t.Errorf("after 2 inserts, expecting 2 messages from getAvailable: %v", avail)
 		}
 	}
 	p.add(m3)
@@ -191,7 +191,7 @@ func TestPoolPayloadSize(t *testing.T) {
 	{
 		avail := p.getAvailable()
 		if len(avail) != 2 {
-			t.Fatalf("after 3 inserts, expecting 2 messages from getAvailable: %v", avail)
+			t.Errorf("after 3 inserts, expecting 2 messages from getAvailable: %v", avail)
 		}
 	}
 
@@ -204,24 +204,24 @@ func TestPoolPayloadSize(t *testing.T) {
 	{
 		_, found := p.getFullBatch()
 		if found {
-			t.Fatalf("after 0 inserts, expecting NOT found from getFullBatch")
+			t.Errorf("after 0 inserts, expecting NOT found from getFullBatch")
 		}
 	}
 	p.add(m3)
 	{
 		_, found := p.getFullBatch()
 		if found {
-			t.Fatalf("after 1 insert, expecting NOT found from getFullBatch")
+			t.Errorf("after 1 insert, expecting NOT found from getFullBatch")
 		}
 	}
 	p.add(m3)
 	{
 		full, found := p.getFullBatch()
 		if !found {
-			t.Fatalf("after 2 insert, expecting found from getFullBatch")
+			t.Errorf("after 2 inserts, expecting found from getFullBatch")
 		}
 		if len(full) != 2 {
-			t.Fatalf("after 2 inserts, expecting 2 messages from getFullBatch: %v", full)
+			t.Errorf("after 2 inserts, expecting 2 messages from getFullBatch: %v", full)
 		}
 	}
 	p.add(m3)
@@ -230,10 +230,10 @@ func TestPoolPayloadSize(t *testing.T) {
 	{
 		full, found := p.getFullBatch()
 		if !found {
-			t.Fatalf("after 2 insert, expecting found from getFullBatch")
+			t.Errorf("after 3 insert, expecting found from getFullBatch")
 		}
 		if len(full) != 2 {
-			t.Fatalf("after 2 inserts, expecting 2 messages from getFullBatch: %v", full)
+			t.Errorf("after 3 inserts, expecting 2 messages from getFullBatch: %v", full)
 		}
 	}
 
@@ -248,7 +248,7 @@ func TestPoolPayloadSize(t *testing.T) {
 	{
 		_, found := p.getFullBatch()
 		if found {
-			t.Fatalf("after injecting 1 x 5 into 10, expecting NOT found from getFullBatch")
+			t.Errorf("after injecting 1 x 5 into 10, expecting NOT found from getFullBatch")
 		}
 	}
 
@@ -256,10 +256,10 @@ func TestPoolPayloadSize(t *testing.T) {
 	{
 		full, found := p.getFullBatch()
 		if !found {
-			t.Fatalf("after injecting 2 x 5 into 10, expecting found from getFullBatch")
+			t.Errorf("after injecting 2 x 5 into 10, expecting found from getFullBatch")
 		}
 		if len(full) != 2 {
-			t.Fatalf("after injecting 2 x 5 into 10, expecting 2 messages from getFullBatch: %v", full)
+			t.Errorf("after injecting 2 x 5 into 10, expecting 2 messages from getFullBatch: %v", full)
 		}
 	}
 
@@ -269,10 +269,10 @@ func TestPoolPayloadSize(t *testing.T) {
 	{
 		full, found := p.getFullBatch()
 		if !found {
-			t.Fatalf("after injecting 3 x 5 into 10, expecting found from getFullBatch")
+			t.Errorf("after injecting 3 x 5 into 10, expecting found from getFullBatch")
 		}
 		if len(full) != 2 {
-			t.Fatalf("after injecting 3 x 5 into 10, expecting 2 messages from getFullBatch: %v", full)
+			t.Errorf("after injecting 3 x 5 into 10, expecting 2 messages from getFullBatch: %v", full)
 		}
 	}
 

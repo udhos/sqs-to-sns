@@ -24,24 +24,46 @@ func (p *pool) add(m message) {
 	p.mu.Unlock()
 }
 
+const maxBatchItems = 10
+
+func (p *pool) findBatchBelowPayloadLimit() (int, bool) {
+	var payloadSum int
+	count := min(maxBatchItems, len(p.buf))
+	for i := range count {
+		m := p.buf[i]
+		if payloadSum+m.snsPayloadSize > p.snsPublishPayloadLimit {
+			return i, true // restricted by payload size
+		}
+		payloadSum += m.snsPayloadSize
+	}
+	return count, false // NOT restricted by payload size
+}
+
 func (p *pool) getFullBatch() ([]message, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	found := len(p.buf) >= 10
+
+	count, restrictedByPayload := p.findBatchBelowPayloadLimit()
+
+	found := count >= maxBatchItems || restrictedByPayload
+
 	if !found {
 		return nil, false
 	}
-	return p.shiftUnsafe(10), true
+
+	return p.shiftUnsafe(count), true
 }
 
 func (p *pool) getAvailable() []message {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	size := min(len(p.buf), 10)
-	if size == 0 {
+
+	count, _ := p.findBatchBelowPayloadLimit()
+	if count == 0 {
 		return nil
 	}
-	return p.shiftUnsafe(size)
+
+	return p.shiftUnsafe(count)
 }
 
 func (p *pool) shiftUnsafe(size int) []message {
