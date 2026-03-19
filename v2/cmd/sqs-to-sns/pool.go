@@ -28,11 +28,17 @@ const maxBatchItems = 10
 
 func (p *pool) findBatchBelowPayloadLimit() (int, bool) {
 	var payloadSum int
-	count := min(maxBatchItems, len(p.buf))
-	for i := range count {
+
+	for i := range maxBatchItems {
+
+		if i >= len(p.buf) {
+			return len(p.buf), false // NOT restricted by payload size
+		}
+
 		m := p.buf[i]
 
 		payloadSum += m.snsPayloadSize
+
 		if payloadSum == p.snsPublishPayloadLimit {
 			return i + 1, true // restricted by payload size
 		}
@@ -40,9 +46,9 @@ func (p *pool) findBatchBelowPayloadLimit() (int, bool) {
 		if payloadSum > p.snsPublishPayloadLimit {
 			return i, true // restricted by payload size
 		}
-
 	}
-	return count, false // NOT restricted by payload size
+
+	return maxBatchItems, false // NOT restricted by payload size
 }
 
 func (p *pool) getFullBatch() ([]message, bool) {

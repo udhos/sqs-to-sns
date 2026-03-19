@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -18,7 +19,7 @@ type message struct {
 }
 
 func newMessage(sqsMessage *sqstypes.Message, receivedAt time.Time,
-	copyAttributes, copyMessageGroupID bool) message {
+	copyAttributes, copyMessageGroupID bool) (message, error) {
 
 	snsEntry := snstypes.PublishBatchRequestEntry{
 		Message: sqsMessage.Body,
@@ -55,7 +56,12 @@ func newMessage(sqsMessage *sqstypes.Message, receivedAt time.Time,
 		snsPayloadSize: getSNSPayloadSize(len(aws.ToString(snsEntry.Message)), snsEntry.MessageAttributes),
 	}
 
-	return m
+	if m.snsPayloadSize > maxSnsPublishPayload {
+		return message{}, fmt.Errorf("invalid payload size for SNS: %d > limit=%d",
+			m.snsPayloadSize, maxSnsPublishPayload)
+	}
+
+	return m, nil
 }
 
 func getSNSPayloadSize(messageSize int, attrs map[string]snstypes.MessageAttributeValue) int {

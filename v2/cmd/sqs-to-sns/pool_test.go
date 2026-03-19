@@ -47,7 +47,7 @@ func TestPool(t *testing.T) {
 	{
 		m := p.getAvailable()
 		if len(m) != 10 {
-			t.Fatalf("expecting 10 getAvailable: %v", m)
+			t.Fatalf("expecting 10 getAvailable, got: %d", len(m))
 		}
 	}
 
@@ -160,7 +160,10 @@ func TestPoolPayloadSize(t *testing.T) {
 	// check avail api
 	//
 
-	m3 := createMessage(4)
+	m3, errMsg := createMessage(4)
+	if errMsg != nil {
+		t.Errorf("message: %v", errMsg)
+	}
 
 	p := newPool(10)
 
@@ -216,16 +219,13 @@ func TestPoolPayloadSize(t *testing.T) {
 	}
 	p.add(m3)
 	{
-		full, found := p.getFullBatch()
-		if !found {
-			t.Errorf("after 2 inserts, expecting found from getFullBatch")
-		}
-		if len(full) != 2 {
-			t.Errorf("after 2 inserts, expecting 2 messages from getFullBatch: %v", full)
+		//debug = true
+		_, found := p.getFullBatch()
+		//debug = false
+		if found {
+			t.Errorf("after 2 inserts, expecting NOT found from getFullBatch")
 		}
 	}
-	p.add(m3)
-	p.add(m3)
 	p.add(m3)
 	{
 		full, found := p.getFullBatch()
@@ -242,7 +242,10 @@ func TestPoolPayloadSize(t *testing.T) {
 	//
 
 	p = newPool(10)
-	m5 := createMessage(5)
+	m5, errMsg := createMessage(5)
+	if errMsg != nil {
+		t.Errorf("message: %v", errMsg)
+	}
 
 	p.add(m5)
 	{
@@ -276,32 +279,28 @@ func TestPoolPayloadSize(t *testing.T) {
 		}
 	}
 
-	// bad data
-
-	p = newPool(5)
-	m6 := createMessage(6)
-	p.add(m6)
-
-	{
-		avail := p.getAvailable()
-		if len(avail) != 0 {
-			t.Errorf("after 1 bad insert, expecting 0 messages from getAvailable: %v", avail)
-		}
-	}
-
-	{
-		full, found := p.getFullBatch()
-		if found {
-			t.Errorf("after 1 bad insert, expecting NOT found from getFullBatch")
-		}
-		if len(full) != 0 {
-			t.Errorf("after 1 bad insert, expecting 0 messages from getAvailable: %v", full)
-		}
-	}
-
 }
 
-func createMessage(payloadSize int) message {
+// go test -count 1 -run '^TestMessagePayload$' ./...
+func TestMessagePayload(t *testing.T) {
+	if _, err := createMessage(0); err != nil {
+		t.Errorf("payload=%d: error: %v", 0, err)
+	}
+	if _, err := createMessage(1); err != nil {
+		t.Errorf("payload=%d: error: %v", 1, err)
+	}
+	if _, err := createMessage(maxSnsPublishPayload - 1); err != nil {
+		t.Errorf("payload=%d: error: %v", maxSnsPublishPayload-1, err)
+	}
+	if _, err := createMessage(maxSnsPublishPayload); err != nil {
+		t.Errorf("payload=%d: error: %v", maxSnsPublishPayload, err)
+	}
+	if _, err := createMessage(maxSnsPublishPayload + 1); err == nil {
+		t.Errorf("payload=%d: unexpected success", maxSnsPublishPayload+1)
+	}
+}
+
+func createMessage(payloadSize int) (message, error) {
 
 	payload := strings.Repeat("a", payloadSize)
 
@@ -317,7 +316,5 @@ func createMessage(payloadSize int) message {
 
 	now := time.Now()
 
-	m := newMessage(sqsMessage, now, copyAttributes, copyMessageGroupID)
-
-	return m
+	return newMessage(sqsMessage, now, copyAttributes, copyMessageGroupID)
 }

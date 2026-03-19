@@ -26,7 +26,11 @@ func TestMessage(t *testing.T) {
 
 	now := time.Now()
 
-	m := newMessage(sqsMessage, now, copyAttributes, copyMessageGroupID)
+	m, err := newMessage(sqsMessage, now, copyAttributes, copyMessageGroupID)
+
+	if err != nil {
+		t.Errorf("message: %v", err)
+	}
 
 	if m.snsPayloadSize != maxSnsPublishPayload {
 		t.Errorf("wrong full payload size: expected=%d got=%d",
