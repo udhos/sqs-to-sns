@@ -31,10 +31,16 @@ func (p *pool) findBatchBelowPayloadLimit() (int, bool) {
 	count := min(maxBatchItems, len(p.buf))
 	for i := range count {
 		m := p.buf[i]
-		if payloadSum+m.snsPayloadSize > p.snsPublishPayloadLimit {
+
+		payloadSum += m.snsPayloadSize
+		if payloadSum == p.snsPublishPayloadLimit {
+			return i + 1, true // restricted by payload size
+		}
+
+		if payloadSum > p.snsPublishPayloadLimit {
 			return i, true // restricted by payload size
 		}
-		payloadSum += m.snsPayloadSize
+
 	}
 	return count, false // NOT restricted by payload size
 }
@@ -45,7 +51,7 @@ func (p *pool) getFullBatch() ([]message, bool) {
 
 	count, restrictedByPayload := p.findBatchBelowPayloadLimit()
 
-	found := count >= maxBatchItems || restrictedByPayload
+	found := count >= maxBatchItems || (count > 0 && restrictedByPayload)
 
 	if !found {
 		return nil, false

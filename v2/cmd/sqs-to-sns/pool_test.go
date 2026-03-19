@@ -276,6 +276,29 @@ func TestPoolPayloadSize(t *testing.T) {
 		}
 	}
 
+	// bad data
+
+	p = newPool(5)
+	m6 := createMessage(6)
+	p.add(m6)
+
+	{
+		avail := p.getAvailable()
+		if len(avail) != 0 {
+			t.Errorf("after 1 bad insert, expecting 0 messages from getAvailable: %v", avail)
+		}
+	}
+
+	{
+		full, found := p.getFullBatch()
+		if found {
+			t.Errorf("after 1 bad insert, expecting NOT found from getFullBatch")
+		}
+		if len(full) != 0 {
+			t.Errorf("after 1 bad insert, expecting 0 messages from getAvailable: %v", full)
+		}
+	}
+
 }
 
 func createMessage(payloadSize int) message {
