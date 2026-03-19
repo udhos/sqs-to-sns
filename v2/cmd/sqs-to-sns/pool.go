@@ -51,6 +51,10 @@ func (p *pool) findBatchBelowPayloadLimit() (int, bool) {
 	return maxBatchItems, false // NOT restricted by payload size
 }
 
+// getFullBatch extracts a full batch of 10 messages.
+// it might return N<10 messages if returning
+// more messages would exceed SNS publish payload byte limit.
+// the 2nd return value is true if the batch was found.
 func (p *pool) getFullBatch() ([]message, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -66,6 +70,9 @@ func (p *pool) getFullBatch() ([]message, bool) {
 	return p.shiftUnsafe(count), true
 }
 
+// getAvailable extracts anything available up to 10 messages.
+// it might return less than the available messages in
+// order to not exceed SNS publish payload byte limit.
 func (p *pool) getAvailable() []message {
 	p.mu.Lock()
 	defer p.mu.Unlock()

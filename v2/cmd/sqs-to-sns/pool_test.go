@@ -318,3 +318,55 @@ func createMessage(payloadSize int) (message, error) {
 
 	return newMessage(sqsMessage, now, copyAttributes, copyMessageGroupID)
 }
+
+// go test -count 1 -run '^TestFullBatchLimit$' ./...
+func TestFullBatchLimit(t *testing.T) {
+
+	m, err := createMessage(1)
+	if err != nil {
+		t.Errorf("message error: %v", err)
+	}
+
+	p := newPool(3)
+
+	{
+		_, found := p.getFullBatch()
+		if found {
+			t.Errorf("in the beginning, expecting NOT found from getFullBatch")
+		}
+	}
+
+	p.add(m)
+	{
+		_, found := p.getFullBatch()
+		if found {
+			t.Errorf("after injecting 1 into 3, expecting NOT found from getFullBatch")
+		}
+	}
+
+	p.add(m)
+	{
+		_, found := p.getFullBatch()
+		if found {
+			t.Errorf("after injecting 2 into 3, expecting NOT found from getFullBatch")
+		}
+	}
+
+	p.add(m)
+	{
+		full, found := p.getFullBatch()
+		if !found {
+			t.Errorf("after injecting 3 into 3, expecting found from getFullBatch")
+		}
+		if len(full) != 3 {
+			t.Errorf("after injecting 3 into 3, expecting 3 from getFullBatch, got %d", len(full))
+		}
+	}
+
+	{
+		_, found := p.getFullBatch()
+		if found {
+			t.Errorf("after extracting, expecting NOT found from getFullBatch")
+		}
+	}
+}
