@@ -18,7 +18,7 @@ func newApp(cfg config, receive receiver) *application {
 	for _, queueCfg := range cfg.queues {
 		q := &queue{
 			queueCfg:    queueCfg,
-			forwardCh:   make(chan message, queueCfg.BufferSizeForward),
+			publishCh:   make(chan message, queueCfg.BufferSizePublish),
 			deleteCh:    make(chan message, queueCfg.BufferSizeDelete),
 			publishPool: newPool(),
 		}
@@ -82,7 +82,7 @@ func (app *application) startReader(q *queue, root bool) {
 		for _, m := range msg {
 			slog.Info(me, "message", aws.ToString(m.sqsMessage.MessageId))
 
-			q.forwardCh <- m
+			q.publishCh <- m
 		}
 
 		if mustStop {
@@ -160,7 +160,7 @@ func (app *application) startPublisher(q *queue, root bool) {
 		}()
 	}
 
-	for msg := range q.forwardCh {
+	for msg := range q.publishCh {
 		slog.Info(me, "message", aws.ToString(msg.sqsMessage.MessageId))
 		q.publishPool.add(msg)
 
@@ -180,7 +180,7 @@ func (app *application) startPublisher(q *queue, root bool) {
 		// root: might scale up by spawning sibling.
 		// non-root: might scale down by exiting.
 		//
-		load := channelLoad(q.forwardCh)
+		load := channelLoad(q.publishCh)
 		if root {
 			// we are root, we might spawn sibling.
 			if load > watermarkHigh {
@@ -254,7 +254,7 @@ type publisher interface {
 
 type queue struct {
 	queueCfg    queueConfig
-	forwardCh   chan message
+	publishCh   chan message
 	deleteCh    chan message
 	readers     atomic.Int64
 	publishers  atomic.Int64

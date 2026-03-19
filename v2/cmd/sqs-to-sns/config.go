@@ -21,7 +21,7 @@ type queueConfig struct {
 	QueueRoleArn      string `yaml:"queue_role_arn"`
 	TopicArn          string `yaml:"topic_arn"`
 	TopicRoleArn      string `yaml:"topic_role_arn"`
-	BufferSizeForward int    `yaml:"buffer_size_forward"`
+	BufferSizePublish int    `yaml:"buffer_size_publish"`
 	BufferSizeDelete  int    `yaml:"buffer_size_delete"`
 	LimitReaders      int    `yaml:"limit_readers"`
 	LimitPublishers   int    `yaml:"limit_publishers"`
@@ -78,8 +78,8 @@ func applyQueuesDefaults(queues []queueConfig) []queueConfig {
 }
 
 func queueDefaults(q queueConfig) queueConfig {
-	if q.BufferSizeForward < 1 {
-		q.BufferSizeForward = defaultBufferSize
+	if q.BufferSizePublish < 1 {
+		q.BufferSizePublish = defaultBufferSize
 	}
 	if q.BufferSizeDelete < 1 {
 		q.BufferSizeDelete = defaultBufferSize
