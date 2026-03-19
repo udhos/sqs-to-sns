@@ -18,7 +18,7 @@ func main() {
 
 	cfg := newConfig(me)
 
-	app := newApp(cfg, &receiverReal{})
+	app := newApp(cfg, &receiverReal{}, &publisherReal{})
 
 	app.run()
 
@@ -38,6 +38,13 @@ func gracefulShutdown() {
 	sig := <-quit
 
 	infof("received signal '%v', initiating shutdown", sig)
+}
+
+type publisherReal struct {
+}
+
+func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
+	return nil, fmt.Errorf("publisherReal.publish: WRITEME: %v: %d", q, len(msg))
 }
 
 type receiverReal struct {

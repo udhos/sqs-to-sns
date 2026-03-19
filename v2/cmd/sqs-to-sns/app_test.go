@@ -26,7 +26,7 @@ func TestApp(t *testing.T) {
 		queues: queues,
 	}
 
-	app := newApp(cfg, &receiverMock{})
+	app := newApp(cfg, &receiverMock{}, &publisherMock{})
 
 	go func() {
 		app.run()
@@ -37,6 +37,13 @@ func TestApp(t *testing.T) {
 	app.stopReaders()
 
 	t.Errorf("test message propagation")
+}
+
+type publisherMock struct {
+}
+
+func (p *publisherMock) publish(_ *queue, msg []message) ([]message, error) {
+	return msg, nil
 }
 
 type receiverMock struct {

@@ -9,10 +9,11 @@ import (
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
-func newApp(cfg config, receive receiver) *application {
+func newApp(cfg config, receive receiver, publish publisher) *application {
 	app := &application{
 		cfg:     cfg,
 		receive: receive,
+		publish: publish,
 	}
 
 	for _, queueCfg := range cfg.queues {
