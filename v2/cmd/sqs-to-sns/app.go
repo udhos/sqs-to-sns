@@ -32,9 +32,11 @@ func (app *application) run() {
 	for _, q := range app.queues {
 		const root = true
 		go func() {
+			q.readers.Add(1)
 			app.startReader(q, root)
 		}()
 		go func() {
+			q.publishers.Add(1)
 			app.startPublisher(q, root)
 		}()
 		go func() {
@@ -57,7 +59,6 @@ func (app *application) startReader(q *queue, root bool) {
 	const me = "reader"
 	slog.Info(me, "root", root)
 
-	q.readers.Add(1)
 	defer q.readers.Add(-1)
 
 	for {
@@ -96,6 +97,7 @@ func (app *application) startReader(q *queue, root bool) {
 				// we are the unique (root) goroutine spawning siblings,
 				// so it is enough to check we are under the limit of readers.
 				if q.readers.Load() < int64(q.queueCfg.LimitReaders) {
+					q.readers.Add(1)
 					go func() {
 						const siblingIsRoot = false // spawned sibling is never root
 						app.startReader(q, siblingIsRoot)
@@ -103,7 +105,7 @@ func (app *application) startReader(q *queue, root bool) {
 				}
 			}
 		} else {
-			// we are non-root, we might exit. spawned siblings never exit.
+			// we are non-root, we might exit. root never exits.
 			if len(msg) == 0 {
 				// we handled no message, then exit.
 				break
@@ -117,9 +119,16 @@ func (app *application) startReader(q *queue, root bool) {
 	}
 }
 
+const (
+	watermarkLow  = 1.0 / 3.0
+	watermarkHigh = 2.0 / 3.0
+)
+
 func (app *application) startPublisher(q *queue, root bool) {
 	const me = "publisher"
 	slog.Info(me, "root", root)
+
+	defer q.publishers.Add(-1)
 
 	const heartbeat = 500 * time.Millisecond
 
@@ -151,14 +160,41 @@ func (app *application) startPublisher(q *queue, root bool) {
 			}
 			timer.Reset(heartbeat) // reset on every tick
 		}
+
 		//
-		// TODO
-		// now we have no messages on our hands.
 		// we can scale up or down:
 		// root: might scale up by spawning sibling.
 		// non-root: might scale down by exiting.
 		//
-	}
+		load := channelLoad(q.forwardCh)
+		if root {
+			// we are root, we might spawn sibling.
+			if load > watermarkHigh {
+				// incoming channel is getting full, then we should spawn a sibling.
+				//
+				// we are the unique (root) goroutine spawning siblings,
+				// so it is enough to check we are under the limit of readers.
+				if q.publishers.Load() < int64(q.queueCfg.LimitPublishers) {
+					q.publishers.Add(1)
+					go func() {
+						const siblingIsRoot = false // spawned sibling is never root
+						app.startPublisher(q, siblingIsRoot)
+					}()
+				}
+			}
+		} else {
+			// we are non-root, we might exit. root never exits.
+			if load < watermarkLow && q.publish.isEmpty() {
+				// incoming channel is getting empty AND our pool is empty, then exit.
+				break
+			}
+		}
+
+	} // for
+}
+
+func channelLoad(ch chan message) float32 {
+	return float32(len(ch)) / float32(cap(ch))
 }
 
 func batchPublish(q *queue, msg []message) {
@@ -191,11 +227,12 @@ type receiver interface {
 }
 
 type queue struct {
-	queueCfg  queueConfig
-	forwardCh chan message
-	deleteCh  chan message
-	readers   atomic.Int64
-	publish   *pool
+	queueCfg   queueConfig
+	forwardCh  chan message
+	deleteCh   chan message
+	readers    atomic.Int64
+	publishers atomic.Int64
+	publish    *pool
 }
 
 type message struct {

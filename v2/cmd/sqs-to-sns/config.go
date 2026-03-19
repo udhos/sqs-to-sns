@@ -24,6 +24,7 @@ type queueConfig struct {
 	BufferSizeForward int    `yaml:"buffer_size_forward"`
 	BufferSizeDelete  int    `yaml:"buffer_size_delete"`
 	LimitReaders      int    `yaml:"limit_readers"`
+	LimitPublishers   int    `yaml:"limit_publishers"`
 }
 
 func newConfig(sessionName string) config {
@@ -85,6 +86,9 @@ func queueDefaults(q queueConfig) queueConfig {
 	}
 	if q.LimitReaders < 1 {
 		q.LimitReaders = defaultLimitConcurrency
+	}
+	if q.LimitPublishers < 1 {
+		q.LimitPublishers = defaultLimitConcurrency
 	}
 	return q
 }
