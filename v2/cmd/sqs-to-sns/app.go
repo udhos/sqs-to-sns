@@ -62,25 +62,35 @@ func (app *application) startReader(q *queue, root bool) {
 	defer q.readers.Add(-1)
 
 	for {
-		msg, stopped, err := app.receive.receive(q)
+		msg, mustStop, err := app.receive.receive(q)
 		if err != nil {
 
-			if stopped {
+			if mustStop {
 				// error but stopped, log and exit.
 				slog.Error(me, "error", err)
 				break
 			}
 
-			const cooldown = time.Second
-			slog.Error(me, "error", err, "sleeping", cooldown)
-			time.Sleep(cooldown)
+			const errorCooldown = time.Second
+			slog.Error(me, "error", err, "sleeping", errorCooldown)
+			time.Sleep(errorCooldown)
 			continue
 		}
+
+		emptyReceive := len(msg) == 0
 
 		for _, m := range msg {
 			slog.Info(me, "message", aws.ToString(m.sqsMessage.MessageId))
 
 			q.forwardCh <- m
+		}
+
+		if mustStop {
+			// exit right after forwarding all messages.
+			// both root and non-root must exit because
+			// we are shutting down and should no longer
+			// receive anything.
+			break
 		}
 
 		//
@@ -104,16 +114,20 @@ func (app *application) startReader(q *queue, root bool) {
 					}()
 				}
 			}
-		} else {
-			// we are non-root, we might exit. root never exits.
-			if len(msg) == 0 {
-				// we handled no message, then exit.
-				break
+			if emptyReceive {
+				// we are root.
+				// we might be alone hitting the API with empty receives.
+				// do not hammer the API.
+				// this might be excessive since we use long polling.
+				const emptyReceiveCooldown = time.Second
+				time.Sleep(emptyReceiveCooldown)
 			}
+			continue
 		}
 
-		if stopped {
-			// stopped, exit after forwarding message.
+		// we are non-root, we might exit. root never exits.
+		if emptyReceive {
+			// we handled no message, then exit.
 			break
 		}
 	}
@@ -182,12 +196,13 @@ func (app *application) startPublisher(q *queue, root bool) {
 					}()
 				}
 			}
-		} else {
-			// we are non-root, we might exit. root never exits.
-			if load < watermarkLow && q.publishPool.isEmpty() {
-				// incoming channel is getting empty AND our pool is empty, then exit.
-				break
-			}
+			continue
+		}
+
+		// we are non-root, we might exit. root never exits.
+		if load < watermarkLow && q.publishPool.isEmpty() {
+			// incoming channel is getting empty AND our pool is empty, then exit.
+			break
 		}
 
 	} // for
