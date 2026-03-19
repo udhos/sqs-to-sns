@@ -95,7 +95,7 @@ func (app *application) startReader(q *queue, root bool) {
 				// we handled a full batch, then we should spawn a sibling.
 				//
 				// we are the unique (root) goroutine spawning siblings,
-				// so it is enough to check we are under the limit of readers.
+				// so it is enough to check we are under the limit.
 				if q.readers.Load() < int64(q.queueCfg.LimitReaders) {
 					q.readers.Add(1)
 					go func() {
@@ -173,7 +173,7 @@ func (app *application) startPublisher(q *queue, root bool) {
 				// incoming channel is getting full, then we should spawn a sibling.
 				//
 				// we are the unique (root) goroutine spawning siblings,
-				// so it is enough to check we are under the limit of readers.
+				// so it is enough to check we are under the limit.
 				if q.publishers.Load() < int64(q.queueCfg.LimitPublishers) {
 					q.publishers.Add(1)
 					go func() {
