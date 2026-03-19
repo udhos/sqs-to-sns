@@ -214,6 +214,8 @@ func (app *application) batchPublish(q *queue, msg []message) {
 
 	const me = "batchPublish"
 
+	infof("%s: %d", me, len(msg))
+
 	pub, errPub := app.publish.publish(q, msg)
 	if errPub != nil {
 		slog.Error(me,
