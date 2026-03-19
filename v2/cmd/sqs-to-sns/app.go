@@ -50,7 +50,9 @@ func (app *application) stopReaders() {
 	infof("stopping readers")
 	for _, q := range app.queues {
 		if err := app.receive.stop(q); err != nil {
-			slog.Error(me)
+			slog.Error(me,
+				"queue_id", q.queueCfg.ID,
+				"error", err)
 		}
 	}
 }
@@ -216,8 +218,13 @@ func channelLoad(ch chan message) float32 {
 
 func (app *application) batchPublish(q *queue, msg []message) {
 
+	const me = "batchPublish"
+
 	pub, errPub := app.publish.publish(q, msg)
 	if errPub != nil {
+		slog.Error(me,
+			"queue_id", q.queueCfg.ID,
+			"error", q.queueCfg.ID)
 		return
 	}
 
