@@ -225,7 +225,7 @@ func (app *application) batchPublish(q *queue, msg []message) {
 	if errPub != nil {
 		slog.Error(me,
 			"queue_id", q.queueCfg.ID,
-			"error", q.queueCfg.ID)
+			"error", errPub)
 		return
 	}
 
@@ -244,7 +244,7 @@ func (app *application) batchDelete(q *queue, msg []message) {
 	if errDel != nil {
 		slog.Error(me,
 			"queue_id", q.queueCfg.ID,
-			"error", q.queueCfg.ID)
+			"error", errDel)
 		return
 	}
 }
