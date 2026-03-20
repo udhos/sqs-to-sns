@@ -45,7 +45,11 @@ func main() {
 		slog.Info(v)
 	}
 
-	env := envconfig.NewSimple(me)
+	host, _ := os.Hostname()
+
+	sessionName := fmt.Sprintf("%s-%s", me, host)
+
+	env := envconfig.NewSimple(sessionName)
 
 	//
 	// log level and format
@@ -72,8 +76,10 @@ func main() {
 		// to generate its clients.
 		func(queueCfg queueConfig) (receiver, publisher, deleter) {
 
-			snsClient := snsclient.NewClient(me, queueCfg.TopicArn, queueCfg.QueueRoleArn, cfg.endpointURL)
-			sqsClient := sqsclient.NewClient(me, queueCfg.QueueURL, queueCfg.QueueRoleArn, cfg.endpointURL)
+			snsClient := snsclient.NewClient(sessionName, queueCfg.TopicArn,
+				queueCfg.QueueRoleArn, cfg.endpointURL)
+			sqsClient := sqsclient.NewClient(sessionName, queueCfg.QueueURL,
+				queueCfg.QueueRoleArn, cfg.endpointURL)
 
 			return newReceiverReal(sqsClient),
 				&publisherReal{snsClient: snsClient},
