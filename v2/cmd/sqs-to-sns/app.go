@@ -6,17 +6,17 @@ import (
 	"time"
 )
 
-func newApp(cfg config, receive receiver, publish publisher,
-	deleter deleter) *application {
+func newApp(cfg config,
+	clientGenerator func(queueCfg queueConfig) (receiver, publisher, deleter)) *application {
 
 	app := &application{
-		cfg:     cfg,
-		receive: receive,
-		publish: publish,
-		delete:  deleter,
+		cfg: cfg,
 	}
 
 	for _, queueCfg := range cfg.queues {
+
+		receive, publish, deleter := clientGenerator(queueCfg)
+
 		q := &queue{
 			queueCfg:    queueCfg,
 			publishCh:   make(chan message, queueCfg.BufferSizePublish),
@@ -28,6 +28,10 @@ func newApp(cfg config, receive receiver, publish publisher,
 			// create a specialized version of pool that does not look at payload size.
 			// for now we set an unreachable limit.
 			deletePool: newPool(100 * maxSnsPublishPayload),
+
+			receive: receive,
+			publish: publish,
+			delete:  deleter,
 		}
 		app.queues = append(app.queues, q)
 	}
@@ -57,7 +61,7 @@ func (app *application) stopReaders() {
 	const me = "stopReaders"
 	infof("stopping readers")
 	for _, q := range app.queues {
-		if err := app.receive.stop(q); err != nil {
+		if err := q.receive.stop(q); err != nil {
 			slog.Error(me,
 				"queue_id", q.queueCfg.ID,
 				"error", err)
@@ -71,7 +75,7 @@ func (app *application) startReader(q *queue, root bool) {
 	defer q.readers.Add(-1)
 
 	for {
-		msg, mustStop, err := app.receive.receive(q)
+		msg, mustStop, err := q.receive.receive(q)
 		if err != nil {
 
 			if mustStop {
@@ -221,7 +225,7 @@ func (app *application) batchPublish(q *queue, msg []message) {
 
 	infof("%s: %d", me, len(msg))
 
-	pub, errPub := app.publish.publish(q, msg)
+	pub, errPub := q.publish.publish(q, msg)
 	if errPub != nil {
 		slog.Error(me,
 			"queue_id", q.queueCfg.ID,
@@ -240,7 +244,7 @@ func (app *application) batchDelete(q *queue, msg []message) {
 
 	infof("%s: %d", me, len(msg))
 
-	errDel := app.delete.delete(q, msg)
+	errDel := q.delete.delete(q, msg)
 	if errDel != nil {
 		slog.Error(me,
 			"queue_id", q.queueCfg.ID,
@@ -316,11 +320,8 @@ func (app *application) startJanitor(q *queue, root bool) {
 }
 
 type application struct {
-	receive receiver
-	publish publisher
-	delete  deleter
-	cfg     config
-	queues  []*queue
+	cfg    config
+	queues []*queue
 }
 
 type receiver interface {
@@ -345,4 +346,8 @@ type queue struct {
 	janitors    atomic.Int64
 	publishPool *pool
 	deletePool  *pool
+
+	receive receiver
+	publish publisher
+	delete  deleter
 }

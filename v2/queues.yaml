@@ -1,0 +1,6 @@
+- id: q1
+  #
+  # required
+  #
+  queue_url: https://sqs.us-east-1.amazonaws.com/111111111111/queue_name1
+  topic_arn: arn:aws:sns:us-east-1:222222222222:topic_name1

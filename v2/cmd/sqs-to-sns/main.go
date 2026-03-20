@@ -9,13 +9,15 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
 	_ "github.com/KimMachineGun/automemlimit"
 	"github.com/udhos/boilerplate/boilerplate"
 	"github.com/udhos/boilerplate/envconfig"
+	"github.com/udhos/sqs-to-sns/v2/internal/snsclient"
+	"github.com/udhos/sqs-to-sns/v2/internal/sqsclient"
+	"gopkg.in/yaml.v3"
 )
 
 func main() {
@@ -58,7 +60,25 @@ func main() {
 
 	cfg := newConfig(env)
 
-	app := newApp(cfg, &receiverReal{}, &publisherReal{}, &deleterReal{})
+	{
+		fmt.Printf("configuration queues: %s\n", cfg.queueListFile)
+		data, _ := yaml.Marshal(cfg.queues)
+		fmt.Println(string(data))
+	}
+
+	app := newApp(cfg,
+
+		// this client generator is called by every queue
+		// to generate its clients.
+		func(queueCfg queueConfig) (receiver, publisher, deleter) {
+
+			snsClient := snsclient.NewClient(me, queueCfg.TopicArn, queueCfg.QueueRoleArn, cfg.endpointURL)
+			sqsClient := sqsclient.NewClient(me, queueCfg.QueueURL, queueCfg.QueueRoleArn, cfg.endpointURL)
+
+			return &receiverReal{sqsClient: sqsClient},
+				&publisherReal{snsClient: snsClient},
+				&deleterReal{sqsClient: sqsClient}
+		})
 
 	app.run()
 
@@ -78,38 +98,4 @@ func gracefulShutdown() {
 	sig := <-quit
 
 	infof("received signal '%v', initiating shutdown", sig)
-}
-
-type deleterReal struct{}
-
-func (d *deleterReal) delete(q *queue, msg []message) error {
-	return fmt.Errorf("deleterReal.delete: WRITEME: %v: %d", q, len(msg))
-}
-
-type publisherReal struct{}
-
-func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
-	return nil, fmt.Errorf("publisherReal.publish: WRITEME: %v: %d", q, len(msg))
-}
-
-type receiverReal struct {
-	stopped bool
-	mu      sync.Mutex
-}
-
-func (r *receiverReal) receive(q *queue) ([]message, bool, error) {
-	r.mu.Lock()
-	stopped := r.stopped
-	r.mu.Unlock()
-
-	time.Sleep(500 * time.Millisecond)
-	return nil, stopped, fmt.Errorf("receiverReal.receive: WRITEME: %v", q)
-}
-
-func (r *receiverReal) stop(q *queue) error {
-	r.mu.Lock()
-	r.stopped = true
-	r.mu.Unlock()
-
-	return fmt.Errorf("receiverReal.stop: WRITEME: %v", q)
 }

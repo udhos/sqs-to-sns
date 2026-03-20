@@ -11,6 +11,7 @@ import (
 
 type config struct {
 	queueListFile        string
+	endpointURL          string
 	exitDelay            time.Duration
 	flushIntervalPublish time.Duration
 	flushIntervalDelete  time.Duration
@@ -18,22 +19,27 @@ type config struct {
 }
 
 type queueConfig struct {
-	ID                string `yaml:"id"`
-	QueueURL          string `yaml:"queue_url"`
-	QueueRoleArn      string `yaml:"queue_role_arn"`
-	TopicArn          string `yaml:"topic_arn"`
-	TopicRoleArn      string `yaml:"topic_role_arn"`
-	BufferSizePublish int    `yaml:"buffer_size_publish"`
-	BufferSizeDelete  int    `yaml:"buffer_size_delete"`
-	LimitReaders      int    `yaml:"limit_readers"`
-	LimitPublishers   int    `yaml:"limit_publishers"`
-	LimitDeleters     int    `yaml:"limit_deleters"`
+	ID                  string `yaml:"id"`
+	QueueURL            string `yaml:"queue_url"`
+	QueueRoleArn        string `yaml:"queue_role_arn"`
+	TopicArn            string `yaml:"topic_arn"`
+	TopicRoleArn        string `yaml:"topic_role_arn"`
+	BufferSizePublish   int    `yaml:"buffer_size_publish"`
+	BufferSizeDelete    int    `yaml:"buffer_size_delete"`
+	LimitReaders        int    `yaml:"limit_readers"`
+	LimitPublishers     int    `yaml:"limit_publishers"`
+	LimitDeleters       int    `yaml:"limit_deleters"`
+	MaxNumberOfMessages int32  `yaml:"max_number_of_messages"` // 1..10 (default 10)
+	WaitTimeSeconds     *int32 `yaml:"wait_time_seconds"`      // 0..20 (default 20)
+	CopyAttributes      *bool  `yaml:"copy_attributes"`
+	CopyMesssageGroupID *bool  `yaml:"copy_message_group_id"`
 }
 
 func newConfig(env *envconfig.Env) config {
 
 	cfg := config{
 		queueListFile:        env.String("QUEUES", "queues.yaml"),
+		endpointURL:          env.String("ENDPOINT_URL", ""),
 		exitDelay:            env.Duration("EXIT_DELAY", 5*time.Second),
 		flushIntervalPublish: env.Duration("FLUSH_INTERVAL_PUBLISH", 500*time.Millisecond),
 		flushIntervalDelete:  env.Duration("FLUSH_INTERVAL_PUBLISH", time.Second),
@@ -43,11 +49,6 @@ func newConfig(env *envconfig.Env) config {
 
 	return cfg
 }
-
-const (
-	defaultBufferSize       = 1000
-	defaultLimitConcurrency = 50
-)
 
 func loadQueueConf(cfg config) []queueConfig {
 	queuesFile := cfg.queueListFile
@@ -80,6 +81,15 @@ func applyQueuesDefaults(queues []queueConfig) []queueConfig {
 	return queues
 }
 
+const (
+	defaultBufferSize                = 1000
+	defaultLimitConcurrency          = 50
+	defaultNumberOfMessages          = 10
+	defaultWaitTimeSeconds     int32 = 20
+	defaultCopyAttributes            = true
+	defaultCopyMesssageGroupID       = true
+)
+
 func queueDefaults(q queueConfig) queueConfig {
 	if q.BufferSizePublish < 1 {
 		q.BufferSizePublish = defaultBufferSize
@@ -96,5 +106,21 @@ func queueDefaults(q queueConfig) queueConfig {
 	if q.LimitDeleters < 1 {
 		q.LimitDeleters = defaultLimitConcurrency
 	}
+	if q.MaxNumberOfMessages < 1 {
+		q.MaxNumberOfMessages = defaultNumberOfMessages
+	}
+	if q.WaitTimeSeconds == nil {
+		b := defaultWaitTimeSeconds
+		q.WaitTimeSeconds = &b
+	}
+	if q.CopyAttributes == nil {
+		b := defaultCopyAttributes
+		q.CopyAttributes = &b
+	}
+	if q.CopyMesssageGroupID == nil {
+		b := defaultCopyMesssageGroupID
+		q.CopyMesssageGroupID = &b
+	}
+
 	return q
 }
