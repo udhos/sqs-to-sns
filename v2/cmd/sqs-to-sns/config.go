@@ -42,7 +42,7 @@ func newConfig(env *envconfig.Env) config {
 		endpointURL:          env.String("ENDPOINT_URL", ""),
 		exitDelay:            env.Duration("EXIT_DELAY", 5*time.Second),
 		flushIntervalPublish: env.Duration("FLUSH_INTERVAL_PUBLISH", 500*time.Millisecond),
-		flushIntervalDelete:  env.Duration("FLUSH_INTERVAL_PUBLISH", time.Second),
+		flushIntervalDelete:  env.Duration("FLUSH_INTERVAL_DELETE", time.Second),
 	}
 
 	cfg.queues = loadQueueConf(cfg)
