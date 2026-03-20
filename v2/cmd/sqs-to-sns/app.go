@@ -219,8 +219,6 @@ func (app *application) batchPublish(q *queue, msg []message) {
 
 	const me = "batchPublish"
 
-	infof("%s: %d", me, len(msg))
-
 	pub, errPub := q.publish.publish(q, msg)
 	if errPub != nil {
 		slog.Error(me,
@@ -237,8 +235,6 @@ func (app *application) batchPublish(q *queue, msg []message) {
 func (app *application) batchDelete(q *queue, msg []message) {
 
 	const me = "batchDelete"
-
-	infof("%s: %d", me, len(msg))
 
 	errDel := q.delete.delete(q, msg)
 	if errDel != nil {
