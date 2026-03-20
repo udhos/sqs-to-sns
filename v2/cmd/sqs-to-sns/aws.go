@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
+	snstypes "github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
@@ -25,7 +26,7 @@ func (d *deleterReal) delete(q *queue, msg []message) error {
 	const me = "deleterReal.delete"
 
 	if len(msg) == 0 {
-		return nil
+		return errors.New("deleterReal.delete: unexpected empty message list")
 	}
 
 	entries := make([]sqstypes.DeleteMessageBatchRequestEntry, len(msg))
@@ -46,6 +47,7 @@ func (d *deleterReal) delete(q *queue, msg []message) error {
 		return err
 	}
 
+	// Log partial failures
 	if len(resp.Failed) > 0 {
 		slog.Error(me,
 			"queue_id", q.queueCfg.ID,
@@ -64,7 +66,57 @@ type publisherReal struct {
 }
 
 func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
-	return nil, fmt.Errorf("publisherReal.publish: WRITEME: %v: %d", q, len(msg))
+
+	const me = "publishReal.publish"
+
+	if len(msg) == 0 {
+		return nil, errors.New("publisherReal.publish: unexpected empty message list")
+	}
+
+	entries := make([]snstypes.PublishBatchRequestEntry, len(msg))
+	for i := range msg {
+		// Entries in a batch must have an ID unique within the request.
+		// We use the SQS MessageId as it's already unique and helpful for tracing.
+		entry := *msg[i].snsBatchEntry
+		entry.Id = msg[i].sqsMessage.MessageId
+		entries[i] = entry
+	}
+
+	input := &sns.PublishBatchInput{
+		TopicArn:                   aws.String(q.queueCfg.TopicArn),
+		PublishBatchRequestEntries: entries,
+	}
+
+	resp, err := p.snsClient.PublishBatch(context.Background(), input)
+	if err != nil {
+		return nil, err
+	}
+
+	// SNS might partially fail (some messages sent, some failed).
+	// We only want to return the messages that SUCCESSFULLY made it to SNS
+	// so the janitor can delete them from SQS.
+
+	// Create a map of successful IDs for fast lookup
+	successIDs := make(map[string]struct{}, len(resp.Successful))
+	for _, s := range resp.Successful {
+		successIDs[aws.ToString(s.Id)] = struct{}{}
+	}
+
+	successMessages := make([]message, 0, len(resp.Successful))
+	for _, m := range msg {
+		if _, ok := successIDs[aws.ToString(m.sqsMessage.MessageId)]; ok {
+			successMessages = append(successMessages, m)
+		}
+	}
+
+	// Log partial failures
+	if len(resp.Failed) > 0 {
+		slog.Error(me,
+			"queue_id", q.queueCfg.ID,
+			"failed_count", len(resp.Failed))
+	}
+
+	return successMessages, nil
 }
 
 //
