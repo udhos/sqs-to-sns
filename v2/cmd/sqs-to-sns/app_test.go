@@ -34,7 +34,7 @@ func TestApp(t *testing.T) {
 	del := &deleterMock{}
 
 	app := newApp(cfg,
-		func(queueCfg queueConfig) (receiver, publisher, deleter) {
+		func(_ queueConfig) (receiver, publisher, deleter) {
 			return &receiverMock{latency: 10 * time.Millisecond, amount: 10}, pub, del
 		},
 	)

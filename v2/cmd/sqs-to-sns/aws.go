@@ -97,10 +97,9 @@ func (r *receiverReal) receive(q *queue) ([]message, bool, error) {
 	return msg, stopped, nil
 }
 
-func (r *receiverReal) stop(q *queue) error {
+func (r *receiverReal) stop(_ *queue) error {
 	r.mu.Lock()
 	r.stopped = true
 	r.mu.Unlock()
-
-	return fmt.Errorf("receiverReal.stop: WRITEME: %v", q)
+	return nil
 }
