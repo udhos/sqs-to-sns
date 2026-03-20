@@ -10,9 +10,11 @@ import (
 )
 
 type config struct {
-	queueListFile string
-	exitDelay     time.Duration
-	queues        []queueConfig
+	queueListFile        string
+	exitDelay            time.Duration
+	flushIntervalPublish time.Duration
+	flushIntervalDelete  time.Duration
+	queues               []queueConfig
 }
 
 type queueConfig struct {
@@ -25,13 +27,16 @@ type queueConfig struct {
 	BufferSizeDelete  int    `yaml:"buffer_size_delete"`
 	LimitReaders      int    `yaml:"limit_readers"`
 	LimitPublishers   int    `yaml:"limit_publishers"`
+	LimitDeleters     int    `yaml:"limit_deleters"`
 }
 
 func newConfig(env *envconfig.Env) config {
 
 	cfg := config{
-		queueListFile: env.String("QUEUES", "queues.yaml"),
-		exitDelay:     env.Duration("EXIT_DELAY", 5*time.Second),
+		queueListFile:        env.String("QUEUES", "queues.yaml"),
+		exitDelay:            env.Duration("EXIT_DELAY", 5*time.Second),
+		flushIntervalPublish: env.Duration("FLUSH_INTERVAL_PUBLISH", 500*time.Millisecond),
+		flushIntervalDelete:  env.Duration("FLUSH_INTERVAL_PUBLISH", time.Second),
 	}
 
 	cfg.queues = loadQueueConf(cfg)
@@ -87,6 +92,9 @@ func queueDefaults(q queueConfig) queueConfig {
 	}
 	if q.LimitPublishers < 1 {
 		q.LimitPublishers = defaultLimitConcurrency
+	}
+	if q.LimitDeleters < 1 {
+		q.LimitDeleters = defaultLimitConcurrency
 	}
 	return q
 }

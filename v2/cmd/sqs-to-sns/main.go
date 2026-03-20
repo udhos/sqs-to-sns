@@ -58,7 +58,7 @@ func main() {
 
 	cfg := newConfig(env)
 
-	app := newApp(cfg, &receiverReal{}, &publisherReal{})
+	app := newApp(cfg, &receiverReal{}, &publisherReal{}, &deleterReal{})
 
 	app.run()
 
@@ -80,8 +80,13 @@ func gracefulShutdown() {
 	infof("received signal '%v', initiating shutdown", sig)
 }
 
-type publisherReal struct {
+type deleterReal struct{}
+
+func (d *deleterReal) delete(q *queue, msg []message) error {
+	return fmt.Errorf("deleterReal.delete: WRITEME: %v: %d", q, len(msg))
 }
+
+type publisherReal struct{}
 
 func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
 	return nil, fmt.Errorf("publisherReal.publish: WRITEME: %v: %d", q, len(msg))

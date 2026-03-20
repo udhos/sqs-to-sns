@@ -4,15 +4,16 @@ import (
 	"log/slog"
 	"sync/atomic"
 	"time"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
-func newApp(cfg config, receive receiver, publish publisher) *application {
+func newApp(cfg config, receive receiver, publish publisher,
+	deleter deleter) *application {
+
 	app := &application{
 		cfg:     cfg,
 		receive: receive,
 		publish: publish,
+		delete:  deleter,
 	}
 
 	for _, queueCfg := range cfg.queues {
@@ -21,6 +22,12 @@ func newApp(cfg config, receive receiver, publish publisher) *application {
 			publishCh:   make(chan message, queueCfg.BufferSizePublish),
 			deleteCh:    make(chan message, queueCfg.BufferSizeDelete),
 			publishPool: newPool(maxSnsPublishPayload),
+
+			// FIXME
+			// delete does not care about payload size.
+			// create a specialized version of pool that does not look at payload size.
+			// for now we set an unreachable limit.
+			deletePool: newPool(100 * maxSnsPublishPayload),
 		}
 		app.queues = append(app.queues, q)
 	}
@@ -40,6 +47,7 @@ func (app *application) run() {
 			app.startPublisher(q, root)
 		}()
 		go func() {
+			q.janitors.Add(1)
 			app.startJanitor(q, root)
 		}()
 	}
@@ -145,9 +153,8 @@ func (app *application) startPublisher(q *queue, root bool) {
 		// Spawn global periodic flusher.
 		// This is the ONLY place where a time-based flush happens.
 		// It ensures we eventually flush partial batches.
-		const heartbeat = 500 * time.Millisecond
 		go func() {
-			ticker := time.NewTicker(heartbeat)
+			ticker := time.NewTicker(app.cfg.flushIntervalPublish)
 			for range ticker.C {
 				m := q.publishPool.getAvailable()
 				if len(m) > 0 {
@@ -227,18 +234,91 @@ func (app *application) batchPublish(q *queue, msg []message) {
 	}
 }
 
-func (app *application) startJanitor(q *queue, _ bool) {
-	const me = "janitor"
-	for {
-		msg := <-q.deleteCh
+func (app *application) batchDelete(q *queue, msg []message) {
 
-		slog.Info(me, "messageId", aws.ToString(msg.sqsMessage.MessageId))
+	const me = "batchDelete"
+
+	infof("%s: %d", me, len(msg))
+
+	errDel := app.delete.delete(q, msg)
+	if errDel != nil {
+		slog.Error(me,
+			"queue_id", q.queueCfg.ID,
+			"error", q.queueCfg.ID)
+		return
 	}
+}
+
+func (app *application) startJanitor(q *queue, root bool) {
+
+	defer q.janitors.Add(-1)
+
+	if root {
+		// Spawn global periodic flusher.
+		// This is the ONLY place where a time-based flush happens.
+		// It ensures we eventually flush partial batches.
+		go func() {
+			ticker := time.NewTicker(app.cfg.flushIntervalDelete)
+			for range ticker.C {
+				m := q.deletePool.getAvailable()
+				if len(m) > 0 {
+					app.batchDelete(q, m)
+				}
+			}
+		}()
+	}
+
+	for msg := range q.deleteCh {
+		q.deletePool.add(msg)
+
+		// drain full batches.
+		for {
+			// attempt to get full 10-message batch
+			m, found := q.deletePool.getFullBatch()
+			if !found {
+				break // no full batch
+			}
+			// got a full batch
+			app.batchDelete(q, m)
+		}
+
+		//
+		// we can scale up or down:
+		// root: might scale up by spawning sibling.
+		// non-root: might scale down by exiting.
+		//
+		load := channelLoad(q.deleteCh)
+		if root {
+			// we are root, we might spawn sibling.
+			if load > watermarkHigh {
+				// incoming channel is getting full, then we should spawn a sibling.
+				//
+				// we are the unique (root) goroutine spawning siblings,
+				// so it is enough to check we are under the limit.
+				if q.janitors.Load() < int64(q.queueCfg.LimitDeleters) {
+					q.janitors.Add(1)
+					go func() {
+						const siblingIsRoot = false // spawned sibling is never root
+						app.startJanitor(q, siblingIsRoot)
+					}()
+				}
+			}
+			continue
+		}
+
+		// we are non-root, we might exit. root never exits.
+		if load < watermarkLow {
+			// incoming channel is getting empty, then exit.
+			break
+		}
+
+	} // for
 }
 
 type application struct {
 	receive receiver
 	publish publisher
+	delete  deleter
 	cfg     config
 	queues  []*queue
 }
@@ -252,11 +332,17 @@ type publisher interface {
 	publish(q *queue, messages []message) ([]message, error)
 }
 
+type deleter interface {
+	delete(q *queue, messages []message) error
+}
+
 type queue struct {
 	queueCfg    queueConfig
 	publishCh   chan message
 	deleteCh    chan message
 	readers     atomic.Int64
 	publishers  atomic.Int64
+	janitors    atomic.Int64
 	publishPool *pool
+	deletePool  *pool
 }
