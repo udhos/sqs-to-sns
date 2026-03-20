@@ -113,7 +113,7 @@ func (app *application) startReader(q *queue, root bool) {
 				//
 				// we are the unique (root) goroutine spawning siblings,
 				// so it is enough to check we are under the limit.
-				if q.readers.Load() < int64(q.queueCfg.LimitReaders) {
+				if q.readers.Load() < q.queueCfg.LimitReaders {
 					q.readers.Add(1)
 					go func() {
 						const siblingIsRoot = false // spawned sibling is never root
@@ -191,7 +191,7 @@ func (app *application) startPublisher(q *queue, root bool) {
 				//
 				// we are the unique (root) goroutine spawning siblings,
 				// so it is enough to check we are under the limit.
-				if q.publishers.Load() < int64(q.queueCfg.LimitPublishers) {
+				if q.publishers.Load() < q.queueCfg.LimitPublishers {
 					q.publishers.Add(1)
 					go func() {
 						const siblingIsRoot = false // spawned sibling is never root
@@ -290,7 +290,7 @@ func (app *application) startJanitor(q *queue, root bool) {
 				//
 				// we are the unique (root) goroutine spawning siblings,
 				// so it is enough to check we are under the limit.
-				if q.janitors.Load() < int64(q.queueCfg.LimitDeleters) {
+				if q.janitors.Load() < q.queueCfg.LimitDeleters {
 					q.janitors.Add(1)
 					go func() {
 						const siblingIsRoot = false // spawned sibling is never root

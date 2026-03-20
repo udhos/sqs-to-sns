@@ -26,9 +26,9 @@ type queueConfig struct {
 	TopicRoleArn        string `yaml:"topic_role_arn"`
 	BufferSizePublish   int    `yaml:"buffer_size_publish"`
 	BufferSizeDelete    int    `yaml:"buffer_size_delete"`
-	LimitReaders        int    `yaml:"limit_readers"`
-	LimitPublishers     int    `yaml:"limit_publishers"`
-	LimitDeleters       int    `yaml:"limit_deleters"`
+	LimitReaders        int64  `yaml:"limit_readers"`
+	LimitPublishers     int64  `yaml:"limit_publishers"`
+	LimitDeleters       int64  `yaml:"limit_deleters"`
 	MaxNumberOfMessages int32  `yaml:"max_number_of_messages"` // 1..10 (default 10)
 	WaitTimeSeconds     *int32 `yaml:"wait_time_seconds"`      // 0..20 (default 20)
 	CopyAttributes      *bool  `yaml:"copy_attributes"`
