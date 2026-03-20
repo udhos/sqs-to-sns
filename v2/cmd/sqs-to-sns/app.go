@@ -59,13 +59,9 @@ func (app *application) run() {
 
 func (app *application) stopReaders() {
 	const me = "stopReaders"
-	infof("stopping readers")
+	infof(me)
 	for _, q := range app.queues {
-		if err := q.receive.stop(q); err != nil {
-			slog.Error(me,
-				"queue_id", q.queueCfg.ID,
-				"error", err)
-		}
+		q.receive.stop(q)
 	}
 }
 
@@ -326,7 +322,7 @@ type application struct {
 
 type receiver interface {
 	receive(q *queue) ([]message, bool, error)
-	stop(q *queue) error
+	stop(q *queue)
 }
 
 type publisher interface {

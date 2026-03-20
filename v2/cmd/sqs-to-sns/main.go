@@ -75,7 +75,7 @@ func main() {
 			snsClient := snsclient.NewClient(me, queueCfg.TopicArn, queueCfg.QueueRoleArn, cfg.endpointURL)
 			sqsClient := sqsclient.NewClient(me, queueCfg.QueueURL, queueCfg.QueueRoleArn, cfg.endpointURL)
 
-			return &receiverReal{sqsClient: sqsClient},
+			return newReceiverReal(sqsClient),
 				&publisherReal{snsClient: snsClient},
 				&deleterReal{sqsClient: sqsClient}
 		})

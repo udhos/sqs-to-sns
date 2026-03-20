@@ -43,8 +43,19 @@ func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
 
 type receiverReal struct {
 	sqsClient *sqs.Client
+	ctx       context.Context    // The "life" of the receiver
+	cancel    context.CancelFunc // The "trigger" to kill it
 	stopped   bool
 	mu        sync.Mutex
+}
+
+func newReceiverReal(sqsClient *sqs.Client) *receiverReal {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &receiverReal{
+		sqsClient: sqsClient,
+		ctx:       ctx,
+		cancel:    cancel,
+	}
 }
 
 func (r *receiverReal) receive(q *queue) ([]message, bool, error) {
@@ -52,11 +63,11 @@ func (r *receiverReal) receive(q *queue) ([]message, bool, error) {
 
 	r.mu.Lock()
 	stopped := r.stopped
-	r.mu.Unlock()
-
 	if stopped {
-		return nil, stopped, nil
+		r.mu.Unlock()
+		return nil, true, nil
 	}
+	r.mu.Unlock()
 
 	input := &sqs.ReceiveMessageInput{
 		QueueUrl: aws.String(q.queueCfg.QueueURL),
@@ -70,9 +81,17 @@ func (r *receiverReal) receive(q *queue) ([]message, bool, error) {
 		WaitTimeSeconds: aws.ToInt32(q.queueCfg.WaitTimeSeconds), // 0..20 (default 20)
 	}
 
-	resp, errRecv := r.sqsClient.ReceiveMessage(context.TODO(), input)
+	resp, errRecv := r.sqsClient.ReceiveMessage(r.ctx, input)
+
+	// Re-capture the stopped state after the block
+	r.mu.Lock()
+	isStopped := r.stopped
+	r.mu.Unlock()
+
 	if errRecv != nil {
-		return nil, stopped, errRecv
+		// If isStopped is true, the caller knows this error (likely context.Canceled)
+		// is just the shutdown signal.
+		return nil, isStopped, errRecv
 	}
 
 	now := time.Now()
@@ -94,12 +113,13 @@ func (r *receiverReal) receive(q *queue) ([]message, bool, error) {
 		msg = append(msg, m)
 	}
 
-	return msg, stopped, nil
+	return msg, false, nil
 }
 
-func (r *receiverReal) stop(_ *queue) error {
+func (r *receiverReal) stop(_ *queue) {
 	r.mu.Lock()
 	r.stopped = true
 	r.mu.Unlock()
-	return nil
+
+	r.cancel() // interrupt ReceiveMessage
 }

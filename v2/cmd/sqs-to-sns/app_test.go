@@ -135,9 +135,8 @@ func (r *receiverMock) receive(_ *queue) ([]message, bool, error) {
 	return result, stopped, nil
 }
 
-func (r *receiverMock) stop(_ *queue) error {
+func (r *receiverMock) stop(_ *queue) {
 	r.mu.Lock()
 	r.stopped = true
 	r.mu.Unlock()
-	return nil
 }
