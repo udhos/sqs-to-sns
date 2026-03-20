@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
 //
@@ -22,7 +22,37 @@ type deleterReal struct {
 }
 
 func (d *deleterReal) delete(q *queue, msg []message) error {
-	return fmt.Errorf("deleterReal.delete: WRITEME: %v: %d", q, len(msg))
+	const me = "deleterReal.delete"
+
+	if len(msg) == 0 {
+		return nil
+	}
+
+	entries := make([]sqstypes.DeleteMessageBatchRequestEntry, len(msg))
+	for i, m := range msg {
+		entries[i] = sqstypes.DeleteMessageBatchRequestEntry{
+			Id:            m.sqsMessage.MessageId,
+			ReceiptHandle: m.sqsMessage.ReceiptHandle,
+		}
+	}
+
+	input := &sqs.DeleteMessageBatchInput{
+		QueueUrl: aws.String(q.queueCfg.QueueURL),
+		Entries:  entries,
+	}
+
+	resp, err := d.sqsClient.DeleteMessageBatch(context.Background(), input)
+	if err != nil {
+		return err
+	}
+
+	if len(resp.Failed) > 0 {
+		slog.Error(me,
+			"queue_id", q.queueCfg.ID,
+			"failed_count", len(resp.Failed))
+	}
+
+	return nil
 }
 
 //
@@ -71,7 +101,7 @@ func (r *receiverReal) receive(q *queue) ([]message, bool, error) {
 
 	input := &sqs.ReceiveMessageInput{
 		QueueUrl: aws.String(q.queueCfg.QueueURL),
-		AttributeNames: []types.QueueAttributeName{
+		AttributeNames: []sqstypes.QueueAttributeName{
 			"SentTimestamp",
 		},
 		MaxNumberOfMessages: q.queueCfg.MaxNumberOfMessages, // 1..10 (default 10)

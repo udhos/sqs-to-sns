@@ -245,7 +245,6 @@ func (app *application) batchDelete(q *queue, msg []message) {
 		slog.Error(me,
 			"queue_id", q.queueCfg.ID,
 			"error", errDel)
-		return
 	}
 }
 
