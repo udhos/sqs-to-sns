@@ -56,3 +56,4 @@ So the pool management must take care to only pick messages that fit into that l
 - [ ] Run benchmark on staging environment.
 - [ ] Add helm chart.
 - [X] Add debug logs for processed messages.
+- [ ] Document that all batching and flushing paths ultimately write to bounded/buffered channels, ensuring that backpressure is preserved and propagates through the entire pipeline.
