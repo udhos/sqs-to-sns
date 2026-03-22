@@ -68,12 +68,12 @@ func (d *deleterMock) getMessages() int {
 	return d.messages
 }
 
-func (d *deleterMock) delete(_ *queue, msg []message) error {
+func (d *deleterMock) delete(_ *queue, msg []message) ([]message, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.deletes++
 	d.messages += len(msg)
-	return nil
+	return msg, nil
 }
 
 type publisherMock struct {

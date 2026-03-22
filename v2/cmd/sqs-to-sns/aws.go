@@ -22,11 +22,11 @@ type deleterReal struct {
 	sqsClient *sqs.Client
 }
 
-func (d *deleterReal) delete(q *queue, msg []message) error {
+func (d *deleterReal) delete(q *queue, msg []message) ([]message, error) {
 	const me = "deleterReal.delete"
 
 	if len(msg) == 0 {
-		return errors.New("deleterReal.delete: unexpected empty message list")
+		return nil, errors.New("deleterReal.delete: unexpected empty message list")
 	}
 
 	entries := make([]sqstypes.DeleteMessageBatchRequestEntry, len(msg))
@@ -44,7 +44,20 @@ func (d *deleterReal) delete(q *queue, msg []message) error {
 
 	resp, err := d.sqsClient.DeleteMessageBatch(context.Background(), input)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	// Create a map of successful IDs for fast lookup
+	successIDs := make(map[string]struct{}, len(resp.Successful))
+	for _, s := range resp.Successful {
+		successIDs[aws.ToString(s.Id)] = struct{}{}
+	}
+
+	successMessages := make([]message, 0, len(resp.Successful))
+	for _, m := range msg {
+		if _, ok := successIDs[aws.ToString(m.sqsMessage.MessageId)]; ok {
+			successMessages = append(successMessages, m)
+		}
 	}
 
 	// Log partial failures
@@ -54,7 +67,7 @@ func (d *deleterReal) delete(q *queue, msg []message) error {
 			"failed_count", len(resp.Failed))
 	}
 
-	return nil
+	return successMessages, nil
 }
 
 //

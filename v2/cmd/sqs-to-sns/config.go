@@ -11,6 +11,7 @@ import (
 
 type config struct {
 	queueListFile        string
+	logMessageBody       bool
 	healthPath           string
 	healthAddr           string
 	endpointURL          string
@@ -41,6 +42,7 @@ func newConfig(env *envconfig.Env) config {
 
 	cfg := config{
 		queueListFile:        env.String("QUEUES", "queues.yaml"),
+		logMessageBody:       env.Bool("LOG_MESSAGE_BODY", false),
 		healthPath:           env.String("HEALTH_PATH", "/health"),
 		healthAddr:           env.String("HEALTH_ADDR", ":8080"),
 		endpointURL:          env.String("ENDPOINT_URL", ""),

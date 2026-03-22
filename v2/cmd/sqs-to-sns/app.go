@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"sync/atomic"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
 func newApp(cfg config,
@@ -85,6 +87,19 @@ func (app *application) startReader(q *queue, root bool) {
 		emptyReceive := len(msg) == 0
 
 		for _, m := range msg {
+
+			// debug logs - what we received
+			if app.cfg.logMessageBody {
+				slog.Debug(me,
+					"queue_id", q.queueCfg.ID,
+					"message_id", aws.ToString(m.sqsMessage.MessageId),
+					"message_body", aws.ToString(m.sqsMessage.Body))
+			} else {
+				slog.Debug(me,
+					"queue_id", q.queueCfg.ID,
+					"message_id", aws.ToString(m.sqsMessage.MessageId))
+			}
+
 			q.publishCh <- m
 		}
 
@@ -237,6 +252,18 @@ func (app *application) batchPublish(q *queue, msg []message) {
 	}
 
 	for _, m := range pub {
+		// debug logs - what we published
+		if app.cfg.logMessageBody {
+			slog.Debug(me,
+				"queue_id", q.queueCfg.ID,
+				"message_id", aws.ToString(m.sqsMessage.MessageId),
+				"message_body", aws.ToString(m.sqsMessage.Body))
+		} else {
+			slog.Debug(me,
+				"queue_id", q.queueCfg.ID,
+				"message_id", aws.ToString(m.sqsMessage.MessageId))
+		}
+
 		q.deleteCh <- m
 	}
 }
@@ -249,11 +276,25 @@ func (app *application) batchDelete(q *queue, msg []message) {
 	// partial batches without real need.
 	q.lastDeleteUnix.Store(time.Now().UnixNano())
 
-	errDel := q.delete.delete(q, msg)
+	del, errDel := q.delete.delete(q, msg)
 	if errDel != nil {
 		slog.Error(me,
 			"queue_id", q.queueCfg.ID,
 			"error", errDel)
+	}
+
+	for _, m := range del {
+		// debug logs - what we deleted
+		if app.cfg.logMessageBody {
+			slog.Debug(me,
+				"queue_id", q.queueCfg.ID,
+				"message_id", aws.ToString(m.sqsMessage.MessageId),
+				"message_body", aws.ToString(m.sqsMessage.Body))
+		} else {
+			slog.Debug(me,
+				"queue_id", q.queueCfg.ID,
+				"message_id", aws.ToString(m.sqsMessage.MessageId))
+		}
 	}
 }
 
@@ -345,7 +386,7 @@ type publisher interface {
 }
 
 type deleter interface {
-	delete(q *queue, messages []message) error
+	delete(q *queue, messages []message) ([]message, error)
 }
 
 type queue struct {

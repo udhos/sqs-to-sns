@@ -50,4 +50,4 @@ So the pool management must take care to only pick messages that fit into that l
 - [ ] Dogstatsd metrics
 - [ ] Benchmark
 - [ ] Helm chart
-- [ ] Add debug logs for processed messages.
+- [X] Add debug logs for processed messages.
