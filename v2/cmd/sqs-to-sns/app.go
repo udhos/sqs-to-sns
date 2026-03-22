@@ -57,7 +57,6 @@ func (app *application) run() {
 
 func (app *application) stopReaders() {
 	const me = "stopReaders"
-	infof(me)
 	for _, q := range app.queues {
 		q.receive.stop(q)
 	}
