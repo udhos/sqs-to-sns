@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -31,8 +32,12 @@ func (d *deleterReal) delete(q *queue, msg []message) ([]message, error) {
 
 	entries := make([]sqstypes.DeleteMessageBatchRequestEntry, len(msg))
 	for i, m := range msg {
+
+		// Combine messageId with index to get traceability and stronger uniqueness.
+		entryID := getBatchEntryID(aws.ToString(m.sqsMessage.MessageId), i)
+
 		entries[i] = sqstypes.DeleteMessageBatchRequestEntry{
-			Id:            m.sqsMessage.MessageId,
+			Id:            aws.String(entryID),
 			ReceiptHandle: m.sqsMessage.ReceiptHandle,
 		}
 	}
@@ -76,8 +81,9 @@ func (d *deleterReal) delete(q *queue, msg []message) ([]message, error) {
 	}
 
 	successMessages := make([]message, 0, len(resp.Successful))
-	for _, m := range msg {
-		if _, ok := successIDs[aws.ToString(m.sqsMessage.MessageId)]; ok {
+	for i, m := range msg {
+		entryID := getBatchEntryID(aws.ToString(m.sqsMessage.MessageId), i)
+		if _, ok := successIDs[entryID]; ok {
 			successMessages = append(successMessages, m)
 		}
 	}
@@ -95,18 +101,19 @@ type publisherReal struct {
 
 func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
 
-	const me = "publishReal.publish"
+	const me = "publisherReal.publish"
 
 	if len(msg) == 0 {
 		return nil, errors.New("publisherReal.publish: unexpected empty message list")
 	}
 
 	entries := make([]snstypes.PublishBatchRequestEntry, len(msg))
-	for i := range msg {
-		// Entries in a batch must have an ID unique within the request.
-		// We use the SQS MessageId as it's already unique and helpful for tracing.
-		entry := *msg[i].snsBatchEntry
-		entry.Id = msg[i].sqsMessage.MessageId
+	for i, m := range msg {
+		// Combine messageId with index to get traceability and stronger uniqueness.
+		entryID := getBatchEntryID(aws.ToString(m.sqsMessage.MessageId), i)
+
+		entry := *m.snsBatchEntry
+		entry.Id = aws.String(entryID)
 		entries[i] = entry
 	}
 
@@ -150,13 +157,18 @@ func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
 	}
 
 	successMessages := make([]message, 0, len(resp.Successful))
-	for _, m := range msg {
-		if _, ok := successIDs[aws.ToString(m.sqsMessage.MessageId)]; ok {
+	for i, m := range msg {
+		entryID := getBatchEntryID(aws.ToString(m.sqsMessage.MessageId), i)
+		if _, ok := successIDs[entryID]; ok {
 			successMessages = append(successMessages, m)
 		}
 	}
 
 	return successMessages, nil
+}
+
+func getBatchEntryID(messageID string, entryIndex int) string {
+	return fmt.Sprintf("%s_%d", messageID, entryIndex)
 }
 
 //
