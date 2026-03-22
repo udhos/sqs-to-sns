@@ -22,7 +22,7 @@ So in v2 we accumulate received messages in a pool waiting for one of two events
 1 - If we accumulate 10 messages, we immediately batch-send them.
 2 - If we reach a 500ms flush period without full batch sends, we send what
     we've got so far as a partial batch, in order to not add excessive latency
-    to messages that dealy to build a full batch.
+    to messages that were delayed to build a full batch.
 
 That same accumulation logic is used twice: for the SNS Publish and for the
 SQS DeleteMessage.
