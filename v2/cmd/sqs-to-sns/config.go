@@ -18,6 +18,7 @@ type config struct {
 	exitDelay            time.Duration
 	flushIntervalPublish time.Duration
 	flushIntervalDelete  time.Duration
+	awsAPITimeout        time.Duration
 	queues               []queueConfig
 }
 
@@ -53,6 +54,7 @@ func newConfig(env *envconfig.Env) config {
 		exitDelay:            env.Duration("EXIT_DELAY", 5*time.Second),
 		flushIntervalPublish: env.Duration("FLUSH_INTERVAL_PUBLISH", 500*time.Millisecond),
 		flushIntervalDelete:  env.Duration("FLUSH_INTERVAL_DELETE", time.Second),
+		awsAPITimeout:        env.Duration("AWS_API_TIMEOUT", 30*time.Second),
 	}
 
 	cfg.queues = loadQueueConf(cfg)

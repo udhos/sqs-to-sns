@@ -20,7 +20,8 @@ import (
 //
 
 type deleterReal struct {
-	sqsClient *sqs.Client
+	awsAPITimeout time.Duration
+	sqsClient     *sqs.Client
 }
 
 func (d *deleterReal) delete(q *queue, msg []message) ([]message, error) {
@@ -47,7 +48,12 @@ func (d *deleterReal) delete(q *queue, msg []message) ([]message, error) {
 		Entries:  entries,
 	}
 
-	resp, err := d.sqsClient.DeleteMessageBatch(context.Background(), input)
+	// Need a new context for the 30s timeout.
+	// This timeout sole purpose is to guard against forever blocked api call.
+	ctx, cancel := context.WithTimeout(context.Background(), d.awsAPITimeout)
+	defer cancel()
+
+	resp, err := d.sqsClient.DeleteMessageBatch(ctx, input)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +102,8 @@ func (d *deleterReal) delete(q *queue, msg []message) ([]message, error) {
 //
 
 type publisherReal struct {
-	snsClient *sns.Client
+	awsAPITimeout time.Duration
+	snsClient     *sns.Client
 }
 
 func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
@@ -122,7 +129,12 @@ func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
 		PublishBatchRequestEntries: entries,
 	}
 
-	resp, err := p.snsClient.PublishBatch(context.Background(), input)
+	// Need a new context for the 30s timeout.
+	// This timeout sole purpose is to guard against forever blocked api call.
+	ctx, cancel := context.WithTimeout(context.Background(), p.awsAPITimeout)
+	defer cancel()
+
+	resp, err := p.snsClient.PublishBatch(ctx, input)
 	if err != nil {
 		return nil, err
 	}
@@ -176,19 +188,22 @@ func getBatchEntryID(messageID string, entryIndex int) string {
 //
 
 type receiverReal struct {
-	sqsClient *sqs.Client
-	ctx       context.Context    // The "life" of the receiver
-	cancel    context.CancelFunc // The "trigger" to kill it
-	stopped   bool
-	mu        sync.Mutex
+	awsAPITimeout time.Duration
+	sqsClient     *sqs.Client
+	ctx           context.Context    // The "life" of the receiver
+	cancel        context.CancelFunc // The "trigger" to kill it
+	stopped       bool
+	mu            sync.Mutex
 }
 
-func newReceiverReal(sqsClient *sqs.Client) *receiverReal {
+func newReceiverReal(sqsClient *sqs.Client,
+	awsAPITimeout time.Duration) *receiverReal {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &receiverReal{
-		sqsClient: sqsClient,
-		ctx:       ctx,
-		cancel:    cancel,
+		awsAPITimeout: awsAPITimeout,
+		sqsClient:     sqsClient,
+		ctx:           ctx,
+		cancel:        cancel,
 	}
 }
 
@@ -215,7 +230,12 @@ func (r *receiverReal) receive(q *queue) ([]message, bool, error) {
 		WaitTimeSeconds: aws.ToInt32(q.queueCfg.WaitTimeSeconds), // 0..20 (default 20)
 	}
 
-	resp, errRecv := r.sqsClient.ReceiveMessage(r.ctx, input)
+	// Need a new context for the 30s timeout.
+	// This timeout sole purpose is to guard against forever blocked api call.
+	ctx, cancel := context.WithTimeout(r.ctx, r.awsAPITimeout)
+	defer cancel()
+
+	resp, errRecv := r.sqsClient.ReceiveMessage(ctx, input)
 
 	// Re-capture the stopped state after the block
 	r.mu.Lock()
@@ -223,8 +243,7 @@ func (r *receiverReal) receive(q *queue) ([]message, bool, error) {
 	r.mu.Unlock()
 
 	if errRecv != nil {
-		// If isStopped is true, the caller knows this error (likely context.Canceled)
-		// is just the shutdown signal.
+		// isStopped signals to caller if we are shutting down.
 		return nil, isStopped, errRecv
 	}
 

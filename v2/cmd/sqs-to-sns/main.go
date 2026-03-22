@@ -81,9 +81,11 @@ func main() {
 			sqsClient := sqsclient.NewClient(sessionName, queueCfg.QueueURL,
 				queueCfg.QueueRoleArn, cfg.endpointURL)
 
-			return newReceiverReal(sqsClient),
-				&publisherReal{snsClient: snsClient},
-				&deleterReal{sqsClient: sqsClient}
+			return newReceiverReal(sqsClient, cfg.awsAPITimeout),
+				&publisherReal{snsClient: snsClient,
+					awsAPITimeout: cfg.awsAPITimeout},
+				&deleterReal{sqsClient: sqsClient,
+					awsAPITimeout: cfg.awsAPITimeout}
 		})
 
 	app.run()
