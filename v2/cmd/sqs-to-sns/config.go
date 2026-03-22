@@ -11,6 +11,8 @@ import (
 
 type config struct {
 	queueListFile        string
+	healthPath           string
+	healthAddr           string
 	endpointURL          string
 	exitDelay            time.Duration
 	flushIntervalPublish time.Duration
@@ -39,6 +41,8 @@ func newConfig(env *envconfig.Env) config {
 
 	cfg := config{
 		queueListFile:        env.String("QUEUES", "queues.yaml"),
+		healthPath:           env.String("HEALTH_PATH", "/health"),
+		healthAddr:           env.String("HEALTH_ADDR", ":8080"),
 		endpointURL:          env.String("ENDPOINT_URL", ""),
 		exitDelay:            env.Duration("EXIT_DELAY", 5*time.Second),
 		flushIntervalPublish: env.Duration("FLUSH_INTERVAL_PUBLISH", 500*time.Millisecond),

@@ -90,7 +90,9 @@ func main() {
 
 	gracefulShutdown()
 
-	app.stopReaders()
+	app.stopReaders() // stop getting messages
+
+	app.health.shutdown() // stop answering health checks
 
 	infof("main: sleeping %v before exiting", cfg.exitDelay)
 	time.Sleep(cfg.exitDelay)

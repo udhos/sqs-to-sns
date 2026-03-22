@@ -10,7 +10,8 @@ func newApp(cfg config,
 	clientGenerator func(queueCfg queueConfig) (receiver, publisher, deleter)) *application {
 
 	app := &application{
-		cfg: cfg,
+		health: newHealthServer(cfg.healthAddr, cfg.healthPath),
+		cfg:    cfg,
 	}
 
 	for _, queueCfg := range cfg.queues {
@@ -107,6 +108,9 @@ func (app *application) startReader(q *queue, root bool) {
 		// non-root: might scale down by exiting.
 		//
 		if root {
+
+			app.health.heartbeat() // tell health check server that we are alive
+
 			// we are root, we might spawn sibling.
 			if len(msg) >= 10 {
 				// we handled a full batch, then we should spawn a sibling.
@@ -311,6 +315,7 @@ func (app *application) startJanitor(q *queue, root bool) {
 }
 
 type application struct {
+	health *health
 	cfg    config
 	queues []*queue
 }
