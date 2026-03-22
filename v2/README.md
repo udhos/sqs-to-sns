@@ -27,7 +27,7 @@ So in v2 we accumulate received messages in a pool waiting for one of two events
 That same accumulation logic is used twice: for the SNS Publish and for the
 SQS DeleteMessage.
 
-v2 automatically automatically sizes its goroutines.
+v2 automatically sizes its goroutines.
 
 v2 has several goroutines types:
 
