@@ -23,6 +23,13 @@ func (h *health) heartbeat() {
 	h.mu.Unlock()
 }
 
+func (h *health) getLastHeartbeat() time.Time {
+	h.mu.Lock()
+	last := h.lastHeartbeat
+	h.mu.Unlock()
+	return last
+}
+
 func (h *health) shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -42,10 +49,21 @@ func newHealthServer(addr, path string) *health {
 
 	server := &http.Server{Addr: addr, Handler: mux}
 
-	h := health{server: server}
+	h := health{
+		server: server,
+
+		// In the worst case, the root long-poll SQS receiver will
+		// deliver the first heartbeat after 20s.
+		// We optimistically set an artificial heartbeat now to
+		// prevent a 500 error during the first poll.
+		// If the receiver is broken, the health check endpoint
+		// will start returning 500s after the 30s limit is exceeded.
+		lastHeartbeat: time.Now(),
+	}
 
 	mux.HandleFunc(path, func(w http.ResponseWriter, _ /*r*/ *http.Request) {
-		elapsed := time.Since(h.lastHeartbeat)
+		lastHeartbeat := h.getLastHeartbeat()
+		elapsed := time.Since(lastHeartbeat)
 		const limit = 30 * time.Second
 		if elapsed > limit {
 			msg := fmt.Sprintf("500 health failure - last heartbeat at %v > limit=%v\n",
