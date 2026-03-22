@@ -3,7 +3,8 @@
 ## TODO
 
 - [X] Health check
-- [ ] Review flusher logic.
+- [X] Review flusher logic.
 - [ ] Dogstatsd metrics
 - [ ] Benchmark
 - [ ] Helm chart
+- [ ] Add debug logs for processed messages.

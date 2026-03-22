@@ -160,6 +160,12 @@ func (app *application) startPublisher(q *queue, root bool) {
 		go func() {
 			ticker := time.NewTicker(app.cfg.flushIntervalPublish)
 			for range ticker.C {
+				// Only partial-flush if we haven't batch-published anything in the last interval.
+				last := q.lastPublishUnix.Load()
+				if time.Since(time.Unix(0, last)) < app.cfg.flushIntervalPublish {
+					continue
+				}
+
 				m := q.publishPool.getAvailable()
 				if len(m) > 0 {
 					app.batchPublish(q, m)
@@ -223,6 +229,10 @@ func (app *application) batchPublish(q *queue, msg []message) {
 
 	const me = "batchPublish"
 
+	// Record activity to keep flusher from flushing
+	// partial batches without real need.
+	q.lastPublishUnix.Store(time.Now().UnixNano())
+
 	pub, errPub := q.publish.publish(q, msg)
 	if errPub != nil {
 		slog.Error(me,
@@ -239,6 +249,10 @@ func (app *application) batchPublish(q *queue, msg []message) {
 func (app *application) batchDelete(q *queue, msg []message) {
 
 	const me = "batchDelete"
+
+	// Record activity to keep flusher from flushing
+	// partial batches without real need.
+	q.lastDeleteUnix.Store(time.Now().UnixNano())
 
 	errDel := q.delete.delete(q, msg)
 	if errDel != nil {
@@ -259,6 +273,12 @@ func (app *application) startJanitor(q *queue, root bool) {
 		go func() {
 			ticker := time.NewTicker(app.cfg.flushIntervalDelete)
 			for range ticker.C {
+				// Only partial-flush if we haven't batch-deleted anything in the last interval.
+				last := q.lastDeleteUnix.Load()
+				if time.Since(time.Unix(0, last)) < app.cfg.flushIntervalDelete {
+					continue
+				}
+
 				m := q.deletePool.getAvailable()
 				if len(m) > 0 {
 					app.batchDelete(q, m)
@@ -334,14 +354,16 @@ type deleter interface {
 }
 
 type queue struct {
-	queueCfg    queueConfig
-	publishCh   chan message
-	deleteCh    chan message
-	readers     atomic.Int64
-	publishers  atomic.Int64
-	janitors    atomic.Int64
-	publishPool *pool
-	deletePool  *pool
+	queueCfg        queueConfig
+	publishCh       chan message
+	deleteCh        chan message
+	readers         atomic.Int64
+	publishers      atomic.Int64
+	janitors        atomic.Int64
+	publishPool     *pool
+	deletePool      *pool
+	lastPublishUnix atomic.Int64
+	lastDeleteUnix  atomic.Int64
 
 	receive receiver
 	publish publisher
