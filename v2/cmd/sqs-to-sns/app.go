@@ -22,13 +22,8 @@ func newApp(cfg config,
 			queueCfg:    queueCfg,
 			publishCh:   make(chan message, queueCfg.BufferSizePublish),
 			deleteCh:    make(chan message, queueCfg.BufferSizeDelete),
-			publishPool: newPool(maxSnsPublishPayload),
-
-			// FIXME
-			// delete does not care about payload size.
-			// create a specialized version of pool that does not look at payload size.
-			// for now we set an unreachable limit.
-			deletePool: newPool(100 * maxSnsPublishPayload),
+			publishPool: newPool(maxSnsPublishPayload), // Byte-size-limited
+			deletePool:  newPool(0),                    // NOT byte-size-limited
 
 			receive: receive,
 			publish: publish,

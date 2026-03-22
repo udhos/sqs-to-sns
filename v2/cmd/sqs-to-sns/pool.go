@@ -27,6 +27,14 @@ func (p *pool) add(m message) {
 const maxBatchItems = 10
 
 func (p *pool) findBatchBelowPayloadLimit() (int, bool) {
+	// 1. Handle the "No Size Limit" case (e.g., for Deletes)
+	if p.snsPublishPayloadLimit <= 0 {
+		// Return whichever is smaller: 10 or the current buffer size
+		return min(len(p.buf), maxBatchItems), false
+	}
+
+	// 2. Handle the "Size Limited" case (e.g., for SNS Publish)
+
 	var payloadSum int
 
 	for i := range maxBatchItems {

@@ -370,3 +370,31 @@ func TestFullBatchLimit(t *testing.T) {
 		}
 	}
 }
+
+// go test -run '^TestPoolDeleteBehavior$' ./...
+func TestPoolDeleteBehavior(t *testing.T) {
+	// 1. Initialize as a Delete Pool (Limit = 0)
+	p := newPool(0)
+
+	// 2. Create "Large" messages (e.g., 100 bytes each)
+	// In a limited pool of '10', these would flush 1-by-1.
+	m, _ := createMessage(100)
+
+	for range 5 {
+		p.add(m)
+	}
+
+	// 3. Test getFullBatch
+	// It should NOT be found because we only have 5/10 messages.
+	// The byte-limit (0) should be ignored.
+	if _, found := p.getFullBatch(); found {
+		t.Fatal("Delete pool should ignore bytes and wait for 10 items")
+	}
+
+	// 4. Test getAvailable
+	// It should return all 5 messages regardless of the '0' limit.
+	avail := p.getAvailable()
+	if len(avail) != 5 {
+		t.Errorf("Expected 5 messages, got %d", len(avail))
+	}
+}
