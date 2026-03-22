@@ -47,10 +47,12 @@ So the pool management must take care to only pick messages that fit into that l
 - [X] Health check
 - [X] Review flusher logic.
 - [X] Delete pool (does not account payload size).
+- [ ] Document how shutdown only stops receivers and everything else is kept running in order to drain messages. No channel is closed. No other goroutine returns.
+- [ ] Document the root goroutines are eternal while nonroot goroutines are created dynamically by root goroutines and eventually die (return) when detect low demand (incoming channel size below low watermark).
 - [ ] Log details for partial batch failed items in publish and delete.
 - [ ] Add 30s timeout with context to AWS API calls in order to prevent permanent loss of goroutine stuck on API.
 - [ ] Review cooldown on API errors (do not hammer API that is returning error).
-- [ ] Add Dogstatsd metrics.
+- [ ] Add Dogstatsd metrics. Only the root goroutines manages metrics. It is a kind of sampling per layer: only the root layer is sampled, nonroot siblings are not.
 - [ ] Run benchmark on staging environment.
 - [ ] Add helm chart.
 - [X] Add debug logs for processed messages.
