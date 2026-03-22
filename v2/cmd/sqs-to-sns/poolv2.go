@@ -47,6 +47,11 @@ func (p *poolV2) findIndices() ([]int, int) {
 		if payloadSum+m.snsPayloadSize <= p.snsPublishPayloadLimit {
 			payloadSum += m.snsPayloadSize
 			indices = append(indices, i)
+
+			// Optimization: If we are at limit, stop scanning.
+			if payloadSum >= p.snsPublishPayloadLimit {
+				break
+			}
 		}
 	}
 
