@@ -5,6 +5,19 @@ import (
 	"sync"
 )
 
+// pool is used to accumulate messages received from sqs before publishing
+// into sns.
+// we aim at publishing whole 10-message batches, in order to save costs
+// on AWS api calls.
+// a publisher goroutine injects every message received into the pool.
+// if pool.getFullBatch() extracts a 10-message batch, the publisher
+// handle it immediately to the batchPublish() method (actual publishing).
+// otherwise the messages sit in the pool awaiting a 10-message accumulation.
+// if 10-messages are not reached within 500ms, the flusher goroutine uses
+// pool.getAvailable() to extract whatever is stalled in there and flushes
+// this partial batch to batchPublish().
+// the whole accumulation and flushing logic is also applied to the janitor
+// who attempts to delete from SQS the messages that were sucessfully published.
 type pool struct {
 	snsPublishPayloadLimit int
 	buf                    []message
