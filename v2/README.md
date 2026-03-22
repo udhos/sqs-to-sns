@@ -2,7 +2,7 @@
 
 ## TODO
 
-- [ ] Health check
+- [X] Health check
 - [ ] Dogstatsd metrics
 - [ ] Benchmark
 - [ ] Helm chart
