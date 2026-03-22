@@ -27,15 +27,13 @@ type pool interface {
 // poolV1 is sufficient for deletes, since they don't need to account
 // for payload byte size.
 type poolV1 struct {
-	snsPublishPayloadLimit int
-	buf                    []message
-	mu                     sync.Mutex
+	buf []message
+	mu  sync.Mutex
 }
 
-func newPoolV1(snsPublishPayloadLimit int) *poolV1 {
+func newPoolV1() *poolV1 {
 	return &poolV1{
-		snsPublishPayloadLimit: snsPublishPayloadLimit,
-		buf:                    make([]message, 0, 100), // prealloc some space
+		buf: make([]message, 0, 100), // prealloc some space
 	}
 }
 
@@ -48,36 +46,7 @@ func (p *poolV1) add(m message) {
 const maxBatchItems = 10
 
 func (p *poolV1) findBatchBelowPayloadLimit() (int, bool) {
-	// 1. Handle the "No Size Limit" case (e.g., for Deletes)
-	if p.snsPublishPayloadLimit <= 0 {
-		// Return whichever is smaller: 10 or the current buffer size
-		return min(len(p.buf), maxBatchItems), false
-	}
-
-	// 2. Handle the "Size Limited" case (e.g., for SNS Publish)
-
-	var payloadSum int
-
-	for i := range maxBatchItems {
-
-		if i >= len(p.buf) {
-			return len(p.buf), false // NOT restricted by payload size
-		}
-
-		m := p.buf[i]
-
-		payloadSum += m.snsPayloadSize
-
-		if payloadSum == p.snsPublishPayloadLimit {
-			return i + 1, true // restricted by payload size
-		}
-
-		if payloadSum > p.snsPublishPayloadLimit {
-			return i, true // restricted by payload size
-		}
-	}
-
-	return maxBatchItems, false // NOT restricted by payload size
+	return min(len(p.buf), maxBatchItems), false
 }
 
 // getFullBatch extracts a full batch of 10 messages.

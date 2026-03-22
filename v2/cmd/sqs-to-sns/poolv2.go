@@ -4,6 +4,8 @@ import (
 	"sync"
 )
 
+// poolV2 is suited for SNS publish in batch, since it
+// accounts for SNS payload byte limit.
 type poolV2 struct {
 	snsPublishPayloadLimit int
 	buf                    []message

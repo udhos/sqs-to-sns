@@ -23,7 +23,7 @@ func newApp(cfg config,
 			publishCh:   make(chan message, queueCfg.BufferSizePublish),
 			deleteCh:    make(chan message, queueCfg.BufferSizeDelete),
 			publishPool: newPoolV2(maxSnsPublishPayload), // Byte-size-limited
-			deletePool:  newPoolV1(0),                    // NOT byte-size-limited
+			deletePool:  newPoolV1(),                     // NOT byte-size-limited
 
 			receive: receive,
 			publish: publish,

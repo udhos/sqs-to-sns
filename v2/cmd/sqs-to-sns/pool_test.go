@@ -12,7 +12,7 @@ import (
 
 // go test -count 1 -run '^TestPool$' ./...
 func TestPool(t *testing.T) {
-	p := newPoolV1(maxSnsPublishPayload)
+	p := newPoolV1()
 
 	{
 		m := p.getAvailable()
@@ -91,7 +91,7 @@ func TestPool(t *testing.T) {
 
 // go test -race -run '^TestPoolConcurrency$' ./...
 func TestPoolConcurrency(t *testing.T) {
-	p := newPoolV1(maxSnsPublishPayload)
+	p := newPoolV1()
 	var wg sync.WaitGroup
 
 	const (
@@ -153,134 +153,6 @@ func TestPoolConcurrency(t *testing.T) {
 	}
 }
 
-// go test -race -run '^TestPoolPayloadSize$' ./...
-func TestPoolPayloadSize(t *testing.T) {
-
-	//
-	// check avail api
-	//
-
-	m3, errMsg := createMessage(4)
-	if errMsg != nil {
-		t.Errorf("message: %v", errMsg)
-	}
-
-	p := newPoolV1(10)
-
-	{
-		avail := p.getAvailable()
-		if len(avail) != 0 {
-			t.Errorf("after 0 inserts, expecting 0 messages from getAvailable: %v", avail)
-		}
-	}
-	p.add(m3)
-	{
-		avail := p.getAvailable()
-		if len(avail) != 1 {
-			t.Errorf("after 1 insert, expecting 1 messages from getAvailable: %v", avail)
-		}
-	}
-	p.add(m3)
-	p.add(m3)
-	{
-		avail := p.getAvailable()
-		if len(avail) != 2 {
-			t.Errorf("after 2 inserts, expecting 2 messages from getAvailable: %v", avail)
-		}
-	}
-	p.add(m3)
-	p.add(m3)
-	p.add(m3)
-	{
-		avail := p.getAvailable()
-		if len(avail) != 2 {
-			t.Errorf("after 3 inserts, expecting 2 messages from getAvailable: %v", avail)
-		}
-	}
-
-	//
-	// check full batch api
-	//
-
-	p = newPoolV1(10) // reset pool
-
-	{
-		_, found := p.getFullBatch()
-		if found {
-			t.Errorf("after 0 inserts, expecting NOT found from getFullBatch")
-		}
-	}
-	p.add(m3)
-	{
-		_, found := p.getFullBatch()
-		if found {
-			t.Errorf("after 1 insert, expecting NOT found from getFullBatch")
-		}
-	}
-	p.add(m3)
-	{
-		//debug = true
-		_, found := p.getFullBatch()
-		//debug = false
-		if found {
-			t.Errorf("after 2 inserts, expecting NOT found from getFullBatch")
-		}
-	}
-	p.add(m3)
-	{
-		full, found := p.getFullBatch()
-		if !found {
-			t.Errorf("after 3 insert, expecting found from getFullBatch")
-		}
-		if len(full) != 2 {
-			t.Errorf("after 3 inserts, expecting 2 messages from getFullBatch: %v", full)
-		}
-	}
-
-	//
-	// test exact byte limit
-	//
-
-	p = newPoolV1(10)
-	m5, errMsg := createMessage(5)
-	if errMsg != nil {
-		t.Errorf("message: %v", errMsg)
-	}
-
-	p.add(m5)
-	{
-		_, found := p.getFullBatch()
-		if found {
-			t.Errorf("after injecting 1 x 5 into 10, expecting NOT found from getFullBatch")
-		}
-	}
-
-	p.add(m5)
-	{
-		full, found := p.getFullBatch()
-		if !found {
-			t.Errorf("after injecting 2 x 5 into 10, expecting found from getFullBatch")
-		}
-		if len(full) != 2 {
-			t.Errorf("after injecting 2 x 5 into 10, expecting 2 messages from getFullBatch: %v", full)
-		}
-	}
-
-	p.add(m5)
-	p.add(m5)
-	p.add(m5)
-	{
-		full, found := p.getFullBatch()
-		if !found {
-			t.Errorf("after injecting 3 x 5 into 10, expecting found from getFullBatch")
-		}
-		if len(full) != 2 {
-			t.Errorf("after injecting 3 x 5 into 10, expecting 2 messages from getFullBatch: %v", full)
-		}
-	}
-
-}
-
 // go test -count 1 -run '^TestMessagePayload$' ./...
 func TestMessagePayload(t *testing.T) {
 	if _, err := createMessage(0); err != nil {
@@ -319,62 +191,10 @@ func createMessage(payloadSize int) (message, error) {
 	return newMessage(sqsMessage, now, copyAttributes, copyMessageGroupID)
 }
 
-// go test -count 1 -run '^TestFullBatchLimit$' ./...
-func TestFullBatchLimit(t *testing.T) {
-
-	m, err := createMessage(1)
-	if err != nil {
-		t.Errorf("message error: %v", err)
-	}
-
-	p := newPoolV1(3)
-
-	{
-		_, found := p.getFullBatch()
-		if found {
-			t.Errorf("in the beginning, expecting NOT found from getFullBatch")
-		}
-	}
-
-	p.add(m)
-	{
-		_, found := p.getFullBatch()
-		if found {
-			t.Errorf("after injecting 1 into 3, expecting NOT found from getFullBatch")
-		}
-	}
-
-	p.add(m)
-	{
-		_, found := p.getFullBatch()
-		if found {
-			t.Errorf("after injecting 2 into 3, expecting NOT found from getFullBatch")
-		}
-	}
-
-	p.add(m)
-	{
-		full, found := p.getFullBatch()
-		if !found {
-			t.Errorf("after injecting 3 into 3, expecting found from getFullBatch")
-		}
-		if len(full) != 3 {
-			t.Errorf("after injecting 3 into 3, expecting 3 from getFullBatch, got %d", len(full))
-		}
-	}
-
-	{
-		_, found := p.getFullBatch()
-		if found {
-			t.Errorf("after extracting, expecting NOT found from getFullBatch")
-		}
-	}
-}
-
 // go test -run '^TestPoolDeleteBehavior$' ./...
 func TestPoolDeleteBehavior(t *testing.T) {
 	// 1. Initialize as a Delete Pool (Limit = 0)
-	p := newPoolV1(0)
+	p := newPoolV1()
 
 	// 2. Create "Large" messages (e.g., 100 bytes each)
 	// In a limited pool of '10', these would flush 1-by-1.
@@ -396,27 +216,5 @@ func TestPoolDeleteBehavior(t *testing.T) {
 	avail := p.getAvailable()
 	if len(avail) != 5 {
 		t.Errorf("Expected 5 messages, got %d", len(avail))
-	}
-}
-
-func TestByteLimitContractV1(t *testing.T) {
-	limit := 10
-	p1 := newPoolV1(limit)
-
-	m6, _ := createMessage(6)
-	m5, _ := createMessage(5)
-
-	p1.add(m6)
-	p1.add(m5)
-
-	// V1 sees [6, 5]. 6+5 > 10.
-	// It cannot skip, so '6' is the maximum it can do.
-	// It should return found=true, len=1.
-	batch, found := p1.getFullBatch()
-	if !found {
-		t.Fatal("V1 should find a full batch (Full by Weight) because 5 doesn't fit")
-	}
-	if len(batch) != 1 || batch[0].snsPayloadSize != 6 {
-		t.Errorf("Expected batch of [6], got %v", batch)
 	}
 }

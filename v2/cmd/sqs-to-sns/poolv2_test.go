@@ -119,7 +119,7 @@ func TestPoolContract(t *testing.T) {
 		name string
 		p    pool
 	}{
-		{"PoolV1", newPoolV1(100)}, // Standard 100-byte limit
+		{"PoolV1", newPoolV1()}, // Standard 100-byte limit
 		{"PoolV2", newPoolV2(100)},
 	}
 
