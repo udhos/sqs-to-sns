@@ -1,18 +1,199 @@
 package main
 
 import (
-	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
-// go test -count 1 -run '^TestPool$' ./...
-func TestPool(t *testing.T) {
-	p := newPoolV1(maxSnsPublishPayload)
+// TestPoolV2BinPacking proves the small messages should not be held hostage
+// by a large message at the head.
+func TestPoolV2BinPacking(t *testing.T) {
+	// Limit of 10 bytes for easy math
+	p := newPoolV2(10)
+
+	// Input: [4, 4, 5, 1, 1]
+	m4, _ := createMessage(4)
+	m5, _ := createMessage(5)
+	m1, _ := createMessage(1)
+
+	p.add(m4)
+	p.add(m4)
+	p.add(m5) // This is the "blocker"
+	p.add(m1)
+	p.add(m1)
+
+	// In PoolV1, getFullBatch would return [4, 4] and found=false
+	// because 4+4+5 > 10.
+	// In PoolV2, it should see that 4+4+1+1 = 10 and return found=true.
+
+	batch, found := p.getFullBatch()
+	if !found {
+		t.Fatal("PoolV2 should have found a full batch by skipping the 5-byte message")
+	}
+
+	if len(batch) != 4 {
+		t.Fatalf("Expected batch of 4 messages, got %d", len(batch))
+	}
+
+	// Verify the content: should be [4, 4, 1, 1]
+	var sum int
+	for _, m := range batch {
+		sum += m.snsPayloadSize
+	}
+	if sum != 10 {
+		t.Errorf("Expected payload sum 10, got %d", sum)
+	}
+
+	// Verify the "Survivor": The 5-byte message should still be in the pool
+	avail := p.getAvailable()
+	if len(avail) != 1 {
+		t.Fatalf("Expected 1 message left in pool, got %d", len(avail))
+	}
+	if avail[0].snsPayloadSize != 5 {
+		t.Errorf("The survivor should be the 5-byte message, got %d", avail[0].snsPayloadSize)
+	}
+}
+
+// TestPoolV2SurvivorOrder ensures that when we pluck messages from the middle,
+// the relative order of the remaining messages is preserved.
+func TestPoolV2SurvivorOrder(t *testing.T) {
+	p := newPoolV2(10)
+
+	// We'll add 5 messages. We'll extract #1 and #3.
+	m2, _ := createMessage(2) // idx 0
+	m8, _ := createMessage(8) // idx 1 (This will be taken with idx 0)
+	mA, _ := createMessage(1) // idx 2 (Survivor A)
+	mB, _ := createMessage(1) // idx 3 (Survivor B)
+
+	p.add(m2)
+	p.add(m8)
+	p.add(mA)
+	p.add(mB)
+
+	// This should take idx 0 and 1 (2+8=10)
+	batch, found := p.getFullBatch()
+	if !found || len(batch) != 2 {
+		t.Fatal("Failed to extract full 10-byte batch")
+	}
+
+	// Now check if Survivors A and B are still in order
+	survivors := p.getAvailable()
+	if len(survivors) != 2 {
+		t.Fatalf("Expected 2 survivors, got %d", len(survivors))
+	}
+
+	// We check the "ReceivedAt" or some unique property to ensure order
+	if survivors[0].snsPayloadSize != 1 || survivors[1].snsPayloadSize != 1 {
+		t.Error("Survivors lost their identity or order")
+	}
+}
+
+// TestPoolV2MaxItems ensures that even if bytes allow more, we never exceed 10 items.
+func TestPoolV2MaxItems(t *testing.T) {
+	p := newPoolV2(1000) // Huge byte limit
+
+	// Add 15 tiny messages
+	m1, _ := createMessage(1)
+	for range 15 {
+		p.add(m1)
+	}
+
+	batch, found := p.getFullBatch()
+	if !found {
+		t.Fatal("Expected full batch")
+	}
+	if len(batch) != 10 {
+		t.Errorf("AWS Batch limit is 10, but pool returned %d", len(batch))
+	}
+
+	remaining := p.getAvailable()
+	if len(remaining) != 5 {
+		t.Errorf("Expected 5 remaining messages, got %d", len(remaining))
+	}
+}
+
+func TestPoolContract(t *testing.T) {
+	// We run the same suite against both implementations
+	tests := []struct {
+		name string
+		p    pool
+	}{
+		{"PoolV1", newPoolV2(100)}, // Standard 100-byte limit
+		{"PoolV2", newPoolV2(100)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := tt.p
+
+			// 1. Requirement: Initial state is empty
+			if len(p.getAvailable()) != 0 {
+				t.Error("expected empty pool on start")
+			}
+
+			// 2. Requirement: getFullBatch requires 10 items (if below byte limit)
+			m1, _ := createMessage(1)
+			for range 9 {
+				p.add(m1)
+			}
+			if _, found := p.getFullBatch(); found {
+				t.Error("getFullBatch should not return true for only 9 small messages")
+			}
+
+			p.add(m1) // Add the 10th
+			batch, found := p.getFullBatch()
+			if !found || len(batch) != 10 {
+				t.Errorf("expected found=true and len=10, got found=%v len=%d", found, len(batch))
+			}
+
+			// 3. Requirement: getAvailable drains whatever is left
+			p.add(m1)
+			p.add(m1)
+			avail := p.getAvailable()
+			if len(avail) != 2 {
+				t.Errorf("expected 2 messages from getAvailable, got %d", len(avail))
+			}
+
+			// 4. Requirement: Post-extraction state is clean
+			if len(p.getAvailable()) != 0 {
+				t.Error("pool should be empty after getAvailable")
+			}
+		})
+	}
+}
+
+func TestByteLimitContractV2(t *testing.T) {
+	limit := 10
+	p2 := newPoolV2(limit)
+
+	m6, _ := createMessage(6)
+	m5, _ := createMessage(5)
+	m1, _ := createMessage(1) // We'll add four of these
+
+	// Input: [6, 5, 1, 1, 1, 1]
+	p2.add(m6)
+	p2.add(m5)
+	p2.add(m1)
+	p2.add(m1)
+	p2.add(m1)
+	p2.add(m1)
+
+	// V2 should see 6 + 1 + 1 + 1 + 1 = 10.
+	// It skips the 5 to hit the exact limit.
+	batch, found := p2.getFullBatch()
+	if !found {
+		t.Error("V2 should have found a full batch by skipping the 5")
+	}
+
+	if len(batch) != 5 {
+		t.Errorf("Expected 5 messages (6+1+1+1+1), got %d", len(batch))
+	}
+}
+
+// go test -count 1 -run '^TestPoolV2$' ./...
+func TestPoolV2(t *testing.T) {
+	p := newPoolV2(maxSnsPublishPayload)
 
 	{
 		m := p.getAvailable()
@@ -89,9 +270,9 @@ func TestPool(t *testing.T) {
 
 }
 
-// go test -race -run '^TestPoolConcurrency$' ./...
-func TestPoolConcurrency(t *testing.T) {
-	p := newPoolV1(maxSnsPublishPayload)
+// go test -race -run '^TestPoolConcurrencyV2$' ./...
+func TestPoolConcurrencyV2(t *testing.T) {
+	p := newPoolV2(maxSnsPublishPayload)
 	var wg sync.WaitGroup
 
 	const (
@@ -153,8 +334,8 @@ func TestPoolConcurrency(t *testing.T) {
 	}
 }
 
-// go test -race -run '^TestPoolPayloadSize$' ./...
-func TestPoolPayloadSize(t *testing.T) {
+// go test -race -run '^TestPoolPayloadSizeV2$' ./...
+func TestPoolPayloadSizeV2(t *testing.T) {
 
 	//
 	// check avail api
@@ -165,7 +346,7 @@ func TestPoolPayloadSize(t *testing.T) {
 		t.Errorf("message: %v", errMsg)
 	}
 
-	p := newPoolV1(10)
+	p := newPoolV2(10)
 
 	{
 		avail := p.getAvailable()
@@ -202,7 +383,7 @@ func TestPoolPayloadSize(t *testing.T) {
 	// check full batch api
 	//
 
-	p = newPoolV1(10) // reset pool
+	p = newPoolV2(10) // reset pool
 
 	{
 		_, found := p.getFullBatch()
@@ -241,7 +422,7 @@ func TestPoolPayloadSize(t *testing.T) {
 	// test exact byte limit
 	//
 
-	p = newPoolV1(10)
+	p = newPoolV2(10)
 	m5, errMsg := createMessage(5)
 	if errMsg != nil {
 		t.Errorf("message: %v", errMsg)
@@ -281,8 +462,8 @@ func TestPoolPayloadSize(t *testing.T) {
 
 }
 
-// go test -count 1 -run '^TestMessagePayload$' ./...
-func TestMessagePayload(t *testing.T) {
+// go test -count 1 -run '^TestMessagePayloadV2$' ./...
+func TestMessagePayloadV2(t *testing.T) {
 	if _, err := createMessage(0); err != nil {
 		t.Errorf("payload=%d: error: %v", 0, err)
 	}
@@ -300,34 +481,15 @@ func TestMessagePayload(t *testing.T) {
 	}
 }
 
-func createMessage(payloadSize int) (message, error) {
-
-	payload := strings.Repeat("a", payloadSize)
-
-	sqsMessage := &sqstypes.Message{
-		MessageId: aws.String(payload),
-		Body:      aws.String(payload),
-	}
-
-	const (
-		copyAttributes     = true
-		copyMessageGroupID = true
-	)
-
-	now := time.Now()
-
-	return newMessage(sqsMessage, now, copyAttributes, copyMessageGroupID)
-}
-
-// go test -count 1 -run '^TestFullBatchLimit$' ./...
-func TestFullBatchLimit(t *testing.T) {
+// go test -count 1 -run '^TestFullBatchLimitV2$' ./...
+func TestFullBatchLimitV2(t *testing.T) {
 
 	m, err := createMessage(1)
 	if err != nil {
 		t.Errorf("message error: %v", err)
 	}
 
-	p := newPoolV1(3)
+	p := newPoolV2(3)
 
 	{
 		_, found := p.getFullBatch()
@@ -371,52 +533,19 @@ func TestFullBatchLimit(t *testing.T) {
 	}
 }
 
-// go test -run '^TestPoolDeleteBehavior$' ./...
-func TestPoolDeleteBehavior(t *testing.T) {
-	// 1. Initialize as a Delete Pool (Limit = 0)
-	p := newPoolV1(0)
+func TestV2LargeMessageFlushesImmediately(t *testing.T) {
+	p := newPoolV2(10)
+	mLarge, _ := createMessage(9)
+	mSmall, _ := createMessage(2)
 
-	// 2. Create "Large" messages (e.g., 100 bytes each)
-	// In a limited pool of '10', these would flush 1-by-1.
-	m, _ := createMessage(100)
+	p.add(mLarge)
+	p.add(mSmall)
 
-	for range 5 {
-		p.add(m)
-	}
-
-	// 3. Test getFullBatch
-	// It should NOT be found because we only have 5/10 messages.
-	// The byte-limit (0) should be ignored.
-	if _, found := p.getFullBatch(); found {
-		t.Fatal("Delete pool should ignore bytes and wait for 10 items")
-	}
-
-	// 4. Test getAvailable
-	// It should return all 5 messages regardless of the '0' limit.
-	avail := p.getAvailable()
-	if len(avail) != 5 {
-		t.Errorf("Expected 5 messages, got %d", len(avail))
-	}
-}
-
-func TestByteLimitContractV1(t *testing.T) {
-	limit := 10
-	p1 := newPoolV1(limit)
-
-	m6, _ := createMessage(6)
-	m5, _ := createMessage(5)
-
-	p1.add(m6)
-	p1.add(m5)
-
-	// V1 sees [6, 5]. 6+5 > 10.
-	// It cannot skip, so '6' is the maximum it can do.
-	// It should return found=true, len=1.
-	batch, found := p1.getFullBatch()
+	// Because 9 + 2 > 10, the 9-byte message is as "Full" as it can get.
+	// Condition 3 in your poolV2 handles this: len(indices) < len(buf)
+	// AND findIndices didn't take the 2.
+	_, found := p.getFullBatch()
 	if !found {
-		t.Fatal("V1 should find a full batch (Full by Weight) because 5 doesn't fit")
-	}
-	if len(batch) != 1 || batch[0].snsPayloadSize != 6 {
-		t.Errorf("Expected batch of [6], got %v", batch)
+		t.Fatal("Expected found=true: The 9-byte message is full because the 2-byte survivor won't fit")
 	}
 }

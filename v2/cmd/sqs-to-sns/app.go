@@ -22,8 +22,8 @@ func newApp(cfg config,
 			queueCfg:    queueCfg,
 			publishCh:   make(chan message, queueCfg.BufferSizePublish),
 			deleteCh:    make(chan message, queueCfg.BufferSizeDelete),
-			publishPool: newPool(maxSnsPublishPayload), // Byte-size-limited
-			deletePool:  newPool(0),                    // NOT byte-size-limited
+			publishPool: newPoolV2(maxSnsPublishPayload), // Byte-size-limited
+			deletePool:  newPoolV1(0),                    // NOT byte-size-limited
 
 			receive: receive,
 			publish: publish,
@@ -355,8 +355,8 @@ type queue struct {
 	readers         atomic.Int64
 	publishers      atomic.Int64
 	janitors        atomic.Int64
-	publishPool     *pool
-	deletePool      *pool
+	publishPool     pool
+	deletePool      pool
 	lastPublishUnix atomic.Int64
 	lastDeleteUnix  atomic.Int64
 

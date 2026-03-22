@@ -17,21 +17,29 @@ import (
 // pool.getAvailable() to extract whatever is stalled in there and flushes
 // this partial batch to batchPublish().
 // the whole accumulation and flushing logic is also applied to the janitor
-// who attempts to delete from SQS the messages that were sucessfully published.
-type pool struct {
+// who attempts to delete from SQS the messages that were successfully published.
+type pool interface {
+	add(m message)
+	getFullBatch() ([]message, bool)
+	getAvailable() []message
+}
+
+// poolV1 is sufficient for deletes, since they don't need to account
+// for payload byte size.
+type poolV1 struct {
 	snsPublishPayloadLimit int
 	buf                    []message
 	mu                     sync.Mutex
 }
 
-func newPool(snsPublishPayloadLimit int) *pool {
-	return &pool{
+func newPoolV1(snsPublishPayloadLimit int) *poolV1 {
+	return &poolV1{
 		snsPublishPayloadLimit: snsPublishPayloadLimit,
 		buf:                    make([]message, 0, 100), // prealloc some space
 	}
 }
 
-func (p *pool) add(m message) {
+func (p *poolV1) add(m message) {
 	p.mu.Lock()
 	p.buf = append(p.buf, m)
 	p.mu.Unlock()
@@ -39,7 +47,7 @@ func (p *pool) add(m message) {
 
 const maxBatchItems = 10
 
-func (p *pool) findBatchBelowPayloadLimit() (int, bool) {
+func (p *poolV1) findBatchBelowPayloadLimit() (int, bool) {
 	// 1. Handle the "No Size Limit" case (e.g., for Deletes)
 	if p.snsPublishPayloadLimit <= 0 {
 		// Return whichever is smaller: 10 or the current buffer size
@@ -76,7 +84,7 @@ func (p *pool) findBatchBelowPayloadLimit() (int, bool) {
 // it might return N<10 messages if returning
 // more messages would exceed SNS publish payload byte limit.
 // the 2nd return value is true if the batch was found.
-func (p *pool) getFullBatch() ([]message, bool) {
+func (p *poolV1) getFullBatch() ([]message, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -94,7 +102,7 @@ func (p *pool) getFullBatch() ([]message, bool) {
 // getAvailable extracts anything available up to 10 messages.
 // it might return less than the available messages in
 // order to not exceed SNS publish payload byte limit.
-func (p *pool) getAvailable() []message {
+func (p *poolV1) getAvailable() []message {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -106,7 +114,7 @@ func (p *pool) getAvailable() []message {
 	return p.shiftUnsafe(count)
 }
 
-func (p *pool) shiftUnsafe(size int) []message {
+func (p *poolV1) shiftUnsafe(size int) []message {
 	// 1. Create the batch to return.
 	// We still clone the batch itself so the caller has their own data.
 	m := slices.Clone(p.buf[:size])
