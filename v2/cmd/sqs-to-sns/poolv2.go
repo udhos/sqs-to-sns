@@ -34,9 +34,17 @@ func (p *poolV2) findIndices() ([]int, int) {
 	var payloadSum int
 	var indices []int
 
-	// We scan the full buffer. If a message fits the current gap,
-	// we take it. If it doesn't fit, it stays exactly where it is
-	// to be the first candidate for the next batch.
+	// We scan the full buffer.
+	// If a message fits the current gap, we take it.
+	// This has the nice property that we don't delay any message,
+	// since we only skip over messages that would not fit the
+	// current batch anyway.
+	// Hence we get one set of messages that maximizes occupation
+	// of the SNS payload. There might exist better sets but
+	// we do not look for them because:
+	// 1 - it would be more expensive than O(N).
+	// 2 - it could further delay messages by chance. A bad luck
+	//     message size could get delayed over and over.
 	for i := range len(p.buf) {
 		if len(indices) >= maxBatchItems {
 			break
