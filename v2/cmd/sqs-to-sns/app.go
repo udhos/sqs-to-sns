@@ -76,9 +76,11 @@ func (app *application) startReader(q *queue, root bool) {
 				break
 			}
 
-			const errorCooldown = time.Second
-			slog.Error(me, "error", err, "sleeping", errorCooldown)
-			time.Sleep(errorCooldown)
+			slog.Error(me,
+				"queue_id", q.queueCfg.ID,
+				"error", err,
+				"sleeping", q.queueCfg.ReceiveErrorCooldown)
+			time.Sleep(q.queueCfg.ReceiveErrorCooldown)
 			continue
 		}
 
@@ -137,9 +139,9 @@ func (app *application) startReader(q *queue, root bool) {
 				// we are root.
 				// we might be alone hitting the API with empty receives.
 				// do not hammer the API.
-				// this might be excessive since we use long polling.
-				const emptyReceiveCooldown = time.Second
-				time.Sleep(emptyReceiveCooldown)
+				// this is not critical as long as we use 20s long polling.
+				// but we keep this in place (1s default) for extra stability.
+				time.Sleep(q.queueCfg.EmptyReceiveCooldown)
 			}
 			continue
 		}
@@ -245,7 +247,9 @@ func (app *application) batchPublish(q *queue, msg []message) {
 	if errPub != nil {
 		slog.Error(me,
 			"queue_id", q.queueCfg.ID,
-			"error", errPub)
+			"error", errPub,
+			"sleeping", q.queueCfg.PublishErrorCooldown)
+		time.Sleep(q.queueCfg.PublishErrorCooldown)
 		return
 	}
 
@@ -278,7 +282,10 @@ func (app *application) batchDelete(q *queue, msg []message) {
 	if errDel != nil {
 		slog.Error(me,
 			"queue_id", q.queueCfg.ID,
-			"error", errDel)
+			"error", errDel,
+			"sleeping", q.queueCfg.DeleteErrorCooldown)
+		time.Sleep(q.queueCfg.DeleteErrorCooldown)
+		return
 	}
 
 	for _, m := range del {

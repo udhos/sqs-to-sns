@@ -22,20 +22,24 @@ type config struct {
 }
 
 type queueConfig struct {
-	ID                  string `yaml:"id"`
-	QueueURL            string `yaml:"queue_url"`
-	QueueRoleArn        string `yaml:"queue_role_arn"`
-	TopicArn            string `yaml:"topic_arn"`
-	TopicRoleArn        string `yaml:"topic_role_arn"`
-	BufferSizePublish   int    `yaml:"buffer_size_publish"`
-	BufferSizeDelete    int    `yaml:"buffer_size_delete"`
-	LimitReaders        int64  `yaml:"limit_readers"`
-	LimitPublishers     int64  `yaml:"limit_publishers"`
-	LimitDeleters       int64  `yaml:"limit_deleters"`
-	MaxNumberOfMessages int32  `yaml:"max_number_of_messages"` // 1..10 (default 10)
-	WaitTimeSeconds     *int32 `yaml:"wait_time_seconds"`      // 0..20 (default 20)
-	CopyAttributes      *bool  `yaml:"copy_attributes"`
-	CopyMesssageGroupID *bool  `yaml:"copy_message_group_id"`
+	ID                   string        `yaml:"id"`
+	QueueURL             string        `yaml:"queue_url"`
+	QueueRoleArn         string        `yaml:"queue_role_arn"`
+	TopicArn             string        `yaml:"topic_arn"`
+	TopicRoleArn         string        `yaml:"topic_role_arn"`
+	BufferSizePublish    int           `yaml:"buffer_size_publish"`
+	BufferSizeDelete     int           `yaml:"buffer_size_delete"`
+	LimitReaders         int64         `yaml:"limit_readers"`
+	LimitPublishers      int64         `yaml:"limit_publishers"`
+	LimitDeleters        int64         `yaml:"limit_deleters"`
+	MaxNumberOfMessages  int32         `yaml:"max_number_of_messages"` // 1..10 (default 10)
+	WaitTimeSeconds      *int32        `yaml:"wait_time_seconds"`      // 0..20 (default 20)
+	CopyAttributes       *bool         `yaml:"copy_attributes"`
+	CopyMesssageGroupID  *bool         `yaml:"copy_message_group_id"`
+	EmptyReceiveCooldown time.Duration `yaml:"empty_receive_cooldown"`
+	ReceiveErrorCooldown time.Duration `yaml:"receive_error_cooldown"`
+	PublishErrorCooldown time.Duration `yaml:"publish_error_cooldown"`
+	DeleteErrorCooldown  time.Duration `yaml:"delete_error_cooldown"`
 }
 
 func newConfig(env *envconfig.Env) config {
@@ -88,12 +92,16 @@ func applyQueuesDefaults(queues []queueConfig) []queueConfig {
 }
 
 const (
-	defaultBufferSize                = 1000
-	defaultLimitConcurrency          = 50
-	defaultNumberOfMessages          = 10
-	defaultWaitTimeSeconds     int32 = 20
-	defaultCopyAttributes            = true
-	defaultCopyMesssageGroupID       = true
+	defaultBufferSize                 = 1000
+	defaultLimitConcurrency           = 50
+	defaultNumberOfMessages           = 10
+	defaultWaitTimeSeconds      int32 = 20
+	defaultCopyAttributes             = true
+	defaultCopyMesssageGroupID        = true
+	defaultEmptyReceiveCooldown       = 1 * time.Second
+	defaultReceiveErrorCooldown       = 1 * time.Second
+	defaultPublishErrorCooldown       = 1 * time.Second
+	defaultDeleteErrorCooldown        = 1 * time.Second
 )
 
 func queueDefaults(q queueConfig) queueConfig {
@@ -126,6 +134,18 @@ func queueDefaults(q queueConfig) queueConfig {
 	if q.CopyMesssageGroupID == nil {
 		b := defaultCopyMesssageGroupID
 		q.CopyMesssageGroupID = &b
+	}
+	if q.EmptyReceiveCooldown < 1 {
+		q.EmptyReceiveCooldown = defaultEmptyReceiveCooldown
+	}
+	if q.ReceiveErrorCooldown < 1 {
+		q.ReceiveErrorCooldown = defaultReceiveErrorCooldown
+	}
+	if q.PublishErrorCooldown < 1 {
+		q.PublishErrorCooldown = defaultPublishErrorCooldown
+	}
+	if q.DeleteErrorCooldown < 1 {
+		q.DeleteErrorCooldown = defaultDeleteErrorCooldown
 	}
 
 	return q
