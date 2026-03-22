@@ -47,6 +47,7 @@ So the pool management must take care to only pick messages that fit into that l
 - [X] Health check
 - [X] Review flusher logic.
 - [X] Delete pool (does not account payload size).
+- [ ] Log details for partial batch failed items in publish and delete.
 - [ ] Review cooldown on API errors (do not hammer API that is returning error).
 - [ ] Add Dogstatsd metrics.
 - [ ] Run benchmark on staging environment.
