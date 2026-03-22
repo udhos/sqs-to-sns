@@ -45,40 +45,28 @@ func (p *poolV1) add(m message) {
 
 const maxBatchItems = 10
 
-func (p *poolV1) findBatchBelowPayloadLimit() (int, bool) {
-	return min(len(p.buf), maxBatchItems), false
-}
-
 // getFullBatch extracts a full batch of 10 messages.
-// it might return N<10 messages if returning
-// more messages would exceed SNS publish payload byte limit.
-// the 2nd return value is true if the batch was found.
 func (p *poolV1) getFullBatch() ([]message, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	count, restrictedByPayload := p.findBatchBelowPayloadLimit()
-
-	found := count >= maxBatchItems || (count > 0 && restrictedByPayload)
-
-	if !found {
+	if len(p.buf) < maxBatchItems {
 		return nil, false
 	}
 
-	return p.shiftUnsafe(count), true
+	return p.shiftUnsafe(maxBatchItems), true
 }
 
 // getAvailable extracts anything available up to 10 messages.
-// it might return less than the available messages in
-// order to not exceed SNS publish payload byte limit.
 func (p *poolV1) getAvailable() []message {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	count, _ := p.findBatchBelowPayloadLimit()
-	if count == 0 {
+	if len(p.buf) == 0 {
 		return nil
 	}
+
+	count := min(len(p.buf), maxBatchItems)
 
 	return p.shiftUnsafe(count)
 }
