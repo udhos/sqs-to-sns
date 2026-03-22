@@ -47,6 +47,28 @@ func (d *deleterReal) delete(q *queue, msg []message) ([]message, error) {
 		return nil, err
 	}
 
+	// Optimization: If everything succeeded, return early
+	if len(resp.Failed) == 0 {
+		return msg, nil
+	}
+
+	// Log partial failures.
+	for _, fail := range resp.Failed {
+		slog.Error(me,
+			"queue_id", q.queueCfg.ID,
+			"error", "partial delete failure",
+			"error_code", aws.ToString(fail.Code),
+			"batch_entry_id", aws.ToString(fail.Id),
+			"explanation", aws.ToString(fail.Message),
+			"sender_fault", fail.SenderFault,
+			"failures", len(resp.Failed),
+			"total_batch_size", len(msg),
+		)
+	}
+
+	// We return the list of messages we successfully deleted from SQS.
+	// The caller uses this information for debug logging.
+
 	// Create a map of successful IDs for fast lookup
 	successIDs := make(map[string]struct{}, len(resp.Successful))
 	for _, s := range resp.Successful {
@@ -58,13 +80,6 @@ func (d *deleterReal) delete(q *queue, msg []message) ([]message, error) {
 		if _, ok := successIDs[aws.ToString(m.sqsMessage.MessageId)]; ok {
 			successMessages = append(successMessages, m)
 		}
-	}
-
-	// Log partial failures
-	if len(resp.Failed) > 0 {
-		slog.Error(me,
-			"queue_id", q.queueCfg.ID,
-			"failed_count", len(resp.Failed))
 	}
 
 	return successMessages, nil
@@ -105,6 +120,25 @@ func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
 		return nil, err
 	}
 
+	// Optimization: If everything succeeded, return early
+	if len(resp.Failed) == 0 {
+		return msg, nil
+	}
+
+	// Log partial failures.
+	for _, fail := range resp.Failed {
+		slog.Error(me,
+			"queue_id", q.queueCfg.ID,
+			"error", "partial publish failure",
+			"error_code", aws.ToString(fail.Code),
+			"batch_entry_id", aws.ToString(fail.Id),
+			"explanation", aws.ToString(fail.Message),
+			"sender_fault", fail.SenderFault,
+			"failures", len(resp.Failed),
+			"total_batch_size", len(msg),
+		)
+	}
+
 	// SNS might partially fail (some messages sent, some failed).
 	// We only want to return the messages that SUCCESSFULLY made it to SNS
 	// so the janitor can delete them from SQS.
@@ -120,13 +154,6 @@ func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
 		if _, ok := successIDs[aws.ToString(m.sqsMessage.MessageId)]; ok {
 			successMessages = append(successMessages, m)
 		}
-	}
-
-	// Log partial failures
-	if len(resp.Failed) > 0 {
-		slog.Error(me,
-			"queue_id", q.queueCfg.ID,
-			"failed_count", len(resp.Failed))
 	}
 
 	return successMessages, nil
