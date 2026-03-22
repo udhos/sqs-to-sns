@@ -48,6 +48,7 @@ So the pool management must take care to only pick messages that fit into that l
 - [X] Review flusher logic.
 - [X] Delete pool (does not account payload size).
 - [ ] Log details for partial batch failed items in publish and delete.
+- [ ] Add 30s timeout with context to AWS API calls in order to prevent permanent loss of goroutine stuck on API.
 - [ ] Review cooldown on API errors (do not hammer API that is returning error).
 - [ ] Add Dogstatsd metrics.
 - [ ] Run benchmark on staging environment.
