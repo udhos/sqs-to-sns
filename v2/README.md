@@ -52,7 +52,7 @@ So the pool management must take care to only pick messages that fit into that l
 - [ ] Log details for partial batch failed items in publish and delete.
 - [ ] Add 30s timeout with context to AWS API calls in order to prevent permanent loss of goroutine stuck on API.
 - [ ] Review cooldown on API errors (do not hammer API that is returning error).
-- [ ] Add Dogstatsd metrics. Only the root goroutines manages metrics. It is a kind of sampling per layer: only the root layer is sampled, nonroot siblings are not.
+- [ ] Add Dogstatsd metrics. Only the root goroutines manages metrics. It is a kind of sampling per layer: only the root layer is sampled, nonroot siblings are not. Important metrics: gauge channel size (min,avg,max), gauge amount of goroutines per type (min,avg,max), count aws api errors. How to gauge min,avg,max for fixed intervals is not yet clear.
 - [ ] Run benchmark on staging environment.
 - [ ] Add helm chart.
 - [X] Add debug logs for processed messages.
