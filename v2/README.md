@@ -47,8 +47,7 @@ byte size limit: all messages in a single batch must fit into 262,144 bytes.
 So the pool management must take care to only pick messages that fit into that limit.
 
 SNS Batching is 'Byte-Aware'. The system tracks the cumulative size of message bodies 
-and metadata, ensuring no batch exceeds the 256KB AWS limit (262,144 bytes), even if
-it contains fewer than 10 messages
+and metadata, ensuring no batch exceeds the 256KB AWS limit (262,144 bytes).
 
 # TODO
 
