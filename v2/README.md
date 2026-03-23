@@ -1,4 +1,4 @@
-# sqs-to-sns
+# sqs-to-sns v2
 
 # Running v2
 
