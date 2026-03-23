@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sqs-to-sns.fullname" . }}
+  labels:
+    {{- include "sqs-to-sns.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "sqs-to-sns.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if or .Values.podAnnotations (or (eq .Values.redeploy "always") (eq .Values.redeploy "reconfig")) }}
+      annotations:
+      {{- end }}
+        {{- if eq .Values.redeploy "always" }}
+        rollme: {{ randAlphaNum 5 | quote }}
+        {{- end }}
+        {{- if eq .Values.redeploy "reconfig" }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "sqs-to-sns.selectorLabels" . | nindent 8 }}
+        {{- if .Values.customLabels }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.customLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+    spec:
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: {{ .Release.Name }}
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ include "sqs-to-sns.fullname" . }}
+      {{- end}}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "sqs-to-sns.fullname" . }}-config
+      containers:
+        - name: {{ .Release.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+          - configMapRef:
+              name: {{ include "sqs-to-sns.fullname" . }}
+          volumeMounts:
+          - name: config
+            mountPath: /etc/sqs-to-sns
+          ports:
+            - name: health
+              containerPort: {{ .Values.podHealthCheck.port }}
+              protocol: TCP
+          startupProbe:
+            # must initialize within 3*100=300 seconds
+            httpGet:
+              path: {{ .Values.podHealthCheck.path }}
+              port: {{ .Values.podHealthCheck.port }}
+            periodSeconds: 3
+            failureThreshold: 100
+          {{- /* readinessProble not recommended
+          readinessProbe:
+            # not ready after 10*6=60 seconds without success
+            httpGet:
+              path: {{ .Values.podHealthCheck.path }}
+              port: {{ .Values.podHealthCheck.port }}
+              scheme: HTTP
+            periodSeconds: 10
+            failureThreshold: 6
+            successThreshold: 1
+            timeoutSeconds: 5
+          */}}
+          livenessProbe:
+            # kill after 20*6=120 seconds without success
+            httpGet:
+              path: {{ .Values.podHealthCheck.path }}
+              port: {{ .Values.podHealthCheck.port }}
+              scheme: HTTP
+            periodSeconds: 20
+            failureThreshold: 6
+            successThreshold: 1
+            timeoutSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
