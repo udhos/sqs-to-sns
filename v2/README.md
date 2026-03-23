@@ -120,7 +120,7 @@ DD_SERVICE              sqs-to-sns
 
 # Per-queue configurations in queues.yaml
 
-The env var `QUEUES` points to yaml file declaring a list a queue-to-topic mappings.
+The env var `QUEUES` points to yaml file declaring a list of queue-to-topic mappings.
 
 ```yaml
 - id: q1
