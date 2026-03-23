@@ -37,7 +37,18 @@ func newApp(cfg config,
 				"topic_arn", queueCfg.TopicArn,
 			),
 		}
+
+		initStats(&q.stats)
+
 		app.queues = append(app.queues, q)
+	}
+
+	if cfg.dogstatsdEnable {
+		if err := exportDogstatsd(cfg.dogstatsdNamespace,
+			cfg.dogstatsdInterval, cfg.dogstatsdSampleRate,
+			app.queues); err != nil {
+			errorf("dogstatsd client error: %v", err)
+		}
 	}
 
 	return app
@@ -75,6 +86,8 @@ func (app *application) startReader(q *queue, root bool) {
 	for {
 		msg, mustStop, err := q.receive.receive(q)
 		if err != nil {
+
+			q.stats.receiveErrors.Add(1) // Track the failure
 
 			if mustStop {
 				// error but stopped, log and exit.
@@ -207,6 +220,9 @@ func (app *application) startPublisher(q *queue, root bool) {
 		// non-root: might scale down by exiting.
 		//
 		load := channelLoad(q.publishCh)
+
+		q.stats.publishChLoad.record(uint64(load * 100)) // Convert 0.75 to 75%
+
 		if root {
 			// we are root, we might spawn sibling.
 			if load > watermarkHigh {
@@ -248,6 +264,7 @@ func (app *application) batchPublish(q *queue, msg []message) {
 
 	pub, errPub := q.publish.publish(q, msg)
 	if errPub != nil {
+		q.stats.publishErrors.Add(1) // Track the failure
 		q.logger.Error(me,
 			"error", errPub,
 			"sleeping", q.queueCfg.PublishErrorCooldown)
@@ -256,15 +273,19 @@ func (app *application) batchPublish(q *queue, msg []message) {
 	}
 
 	for _, m := range pub {
+		// Record the latency of every message successfully moved
+		latencyMs := time.Since(m.receivedAt).Milliseconds()
+		q.stats.forwardLatency.record(uint64(latencyMs))
+
 		// debug logs - what we published
 		if app.cfg.logMessageBody {
 			q.logger.Debug(me,
-				"latency_ms", time.Since(m.receivedAt).Milliseconds(),
+				"latency_ms", latencyMs,
 				"message_id", aws.ToString(m.sqsMessage.MessageId),
 				"message_body", aws.ToString(m.sqsMessage.Body))
 		} else {
 			q.logger.Debug(me,
-				"latency_ms", time.Since(m.receivedAt).Milliseconds(),
+				"latency_ms", latencyMs,
 				"message_id", aws.ToString(m.sqsMessage.MessageId))
 		}
 
@@ -282,6 +303,7 @@ func (app *application) batchDelete(q *queue, msg []message) {
 
 	del, errDel := q.delete.delete(q, msg)
 	if errDel != nil {
+		q.stats.deleteErrors.Add(1) // Track the failure
 		q.logger.Error(me,
 			"error", errDel,
 			"sleeping", q.queueCfg.DeleteErrorCooldown)
@@ -347,6 +369,9 @@ func (app *application) startJanitor(q *queue, root bool) {
 		// non-root: might scale down by exiting.
 		//
 		load := channelLoad(q.deleteCh)
+
+		q.stats.deleteChLoad.record(uint64(load * 100)) // Convert 0.75 to 75%
+
 		if root {
 			// we are root, we might spawn sibling.
 			if load > watermarkHigh {
@@ -410,4 +435,6 @@ type queue struct {
 	delete  deleter
 
 	logger *slog.Logger
+
+	stats stats
 }

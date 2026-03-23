@@ -20,6 +20,10 @@ type config struct {
 	flushIntervalDelete  time.Duration
 	awsAPITimeout        time.Duration
 	queues               []queueConfig
+	dogstatsdEnable      bool
+	dogstatsdInterval    time.Duration
+	dogstatsdNamespace   string
+	dogstatsdSampleRate  float64
 }
 
 type queueConfig struct {
@@ -55,6 +59,10 @@ func newConfig(env *envconfig.Env) config {
 		flushIntervalPublish: env.Duration("FLUSH_INTERVAL_PUBLISH", 500*time.Millisecond),
 		flushIntervalDelete:  env.Duration("FLUSH_INTERVAL_DELETE", time.Second),
 		awsAPITimeout:        env.Duration("AWS_API_TIMEOUT", 30*time.Second),
+		dogstatsdEnable:      env.Bool("DOGSTATSD_ENABLE", false),
+		dogstatsdInterval:    env.Duration("DOGSTATSD_INTERVAL", 20*time.Second),
+		dogstatsdNamespace:   env.String("DOGSTATSD_NAMESPACE", ""),
+		dogstatsdSampleRate:  env.Float64("DOGSTATSD_SAMPLE_RATE", 1.0),
 	}
 
 	cfg.queues = loadQueueConf(cfg)

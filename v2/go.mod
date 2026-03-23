@@ -8,10 +8,13 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sns v1.39.14
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.24
 	github.com/udhos/boilerplate v1.6.16
+	github.com/udhos/dogstatsdclient v1.1.2
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
+	github.com/DataDog/datadog-go/v5 v5.8.3 // indirect
+	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/aws/aws-sdk-go v1.55.8 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.7 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.12 // indirect
