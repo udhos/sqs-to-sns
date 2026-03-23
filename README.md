@@ -8,7 +8,7 @@
 
 sqs-to-sns is an utility written in Go to forward messages from AWS SQS Queues to AWS SNS Topics.
 
-This README is covers version v1.
+This README covers version v1.
 
 **sqs-to-sns v2** is available here: [sqs-to-sns v2](v2).
 
