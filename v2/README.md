@@ -30,6 +30,10 @@ helm upgrade --install sqs-to-sns sqs-to-sns/sqs-to-sns --version 2.0.0
 
 ## v1
 
+v1 provides at-least-once delivery guarantee.
+
+v1 does not use or depend on any other persistent storage.
+
 v1 long-polls SQS for 20s using ReceiveMessage with MaxNumberOfMessages=10,
 but SNS Publish sends 1 message and SQS DeleteMessage also sends 1 message.
 
@@ -38,6 +42,10 @@ v1 requires fine-tuning of number of reader and writer goroutines.
 v1 writer goroutine performs both SNS Publish and SQS DeleteMessage.
 
 ## v2
+
+v2 keeps at-least-once delivery guarantee.
+
+v2 keeps independence of persistent storage.
 
 v2 aims to be easier to configure (less knobs), more cost-effective and similarly performant.
 
