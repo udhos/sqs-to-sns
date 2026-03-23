@@ -96,10 +96,12 @@ and metadata, ensuring no batch exceeds the 256KB AWS limit (262,144 bytes).
 # Global env vars
 
 ```bash
-AUTOMEMLIMIT_DEBUG      "true"
+Env Var                 Default
+----------------------- ------
+AUTOMEMLIMIT_DEBUG      false
 LOG_LEVEL               info
-LOG_JSON:               "true"
-LOG_MESSAGE_BODY        "false"
+LOG_JSON:               false
+LOG_MESSAGE_BODY        false
 QUEUES                  queues.yaml
 ENDPOINT_URL            ""
 EXIT_DELAY              5s
@@ -108,10 +110,10 @@ FLUSH_INTERVAL_DELETE   1s
 AWS_API_TIMEOUT         30s
 HEALTH_ADDR             :8080
 HEALTH_PATH             /health
-DOGSTATSD_ENABLE        "false"
+DOGSTATSD_ENABLE        false
 DOGSTATSD_INTERVAL      20s
 DOGSTATSD_NAMESPACE     sqstosns
-DOGSTATSD_SAMPLE_RATE   "1.0"
+DOGSTATSD_SAMPLE_RATE   1.0
 DD_AGENT_HOST           localhost
 DD_SERVICE              sqs-to-sns
 ```
