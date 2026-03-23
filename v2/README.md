@@ -93,6 +93,60 @@ and metadata, ensuring no batch exceeds the 256KB AWS limit (262,144 bytes).
 - [X] Document goroutines root/nonroot lifespan
 - [ ] Run benchmark on staging environment.
 
+# Global env vars
+
+```bash
+AUTOMEMLIMIT_DEBUG      "true"
+LOG_LEVEL               info
+LOG_JSON:               "true"
+LOG_MESSAGE_BODY        "false"
+QUEUES                  queues.yaml
+ENDPOINT_URL            ""
+EXIT_DELAY              5s
+FLUSH_INTERVAL_PUBLISH  500ms
+FLUSH_INTERVAL_DELETE   1s
+AWS_API_TIMEOUT         30s
+HEALTH_ADDR             :8080
+HEALTH_PATH             /health
+DOGSTATSD_ENABLE        "false"
+DOGSTATSD_INTERVAL      20s
+DOGSTATSD_NAMESPACE     sqstosns
+DOGSTATSD_SAMPLE_RATE   "1.0"
+DD_AGENT_HOST           localhost
+DD_SERVICE              sqs-to-sns
+```
+
+# Per-queue configurations in queues.yaml
+
+The env var `QUEUES` points to yaml file declaring a list a queue-to-topic mappings.
+
+```yaml
+- id: q1
+  #
+  # required:
+  #
+  queue_url: https://sqs.us-east-1.amazonaws.com/111111111111/queue_name1
+  topic_arn: arn:aws:sns:us-east-1:222222222222:topic_name1
+  #
+  # optional:
+  #
+  # queue_role_arn: ""
+  # topic_role_arn: ""
+  # buffer_size_publish: 1000
+  # buffer_size_delete: 1000
+  # limit_readers: 50
+  # limit_publishers: 50
+  # limit_deleters: 50
+  # max_number_of_messages: 10 # 1..10 (default 10)
+  # wait_time_seconds: 20      # 0..20 (default 20)
+  # copy_attributes: true
+  # copy_message_group_id: true
+  # empty_receive_cooldown: 1s
+  # receive_error_cooldown: 1s
+  # publish_error_cooldown: 1s
+  # delete_error_cooldown: 1s
+```
+
 # Dogstatsd metrics
 
 v2 uses a high-performance local aggregator. Every goroutine (root and sibling) records metrics into atomic buckets. A background harvester snapshots these buckets every 20s to export min, max, and avg values, ensuring even micro-bursts are captured.
