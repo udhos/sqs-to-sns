@@ -60,12 +60,12 @@ and metadata, ensuring no batch exceeds the 256KB AWS limit (262,144 bytes).
 - [X] Review cooldown on API errors (do not hammer API that is returning error).
 - [X] Log latency.
 - [X] Add Dogstatsd metrics.
-- [ ] Run benchmark on staging environment.
-- [ ] Add helm chart.
+- [X] Add helm chart.
 - [X] Add debug logs for processed messages.
 - [X] Document backpressure.
 - [X] Document shutdown.
 - [X] Document goroutines root/nonroot lifespan
+- [ ] Run benchmark on staging environment.
 
 # Dogstatsd metrics
 
