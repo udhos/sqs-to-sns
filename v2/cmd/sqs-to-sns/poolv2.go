@@ -32,7 +32,7 @@ func (p *poolV2) add(m message) {
 
 func (p *poolV2) findIndices() ([]int, int) {
 	var payloadSum int
-	var indices []int
+	indices := make([]int, 0, maxBatchItems) // Pre-allocate space for 10 integers on the stack
 
 	// We scan the full buffer.
 	// If a message fits the current gap, we take it.
