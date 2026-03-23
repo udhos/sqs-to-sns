@@ -30,6 +30,12 @@ func newApp(cfg config,
 			receive: receive,
 			publish: publish,
 			delete:  deleter,
+
+			logger: slog.With(
+				"queue_id", queueCfg.ID,
+				"queue_url", queueCfg.QueueURL,
+				"topic_arn", queueCfg.TopicArn,
+			),
 		}
 		app.queues = append(app.queues, q)
 	}
@@ -72,12 +78,11 @@ func (app *application) startReader(q *queue, root bool) {
 
 			if mustStop {
 				// error but stopped, log and exit.
-				slog.Error(me, "error", err)
+				q.logger.Error(me, "error", err)
 				break
 			}
 
-			slog.Error(me,
-				"queue_id", q.queueCfg.ID,
+			q.logger.Error(me,
 				"error", err,
 				"sleeping", q.queueCfg.ReceiveErrorCooldown)
 			time.Sleep(q.queueCfg.ReceiveErrorCooldown)
@@ -90,13 +95,11 @@ func (app *application) startReader(q *queue, root bool) {
 
 			// debug logs - what we received
 			if app.cfg.logMessageBody {
-				slog.Debug(me,
-					"queue_id", q.queueCfg.ID,
+				q.logger.Debug(me,
 					"message_id", aws.ToString(m.sqsMessage.MessageId),
 					"message_body", aws.ToString(m.sqsMessage.Body))
 			} else {
-				slog.Debug(me,
-					"queue_id", q.queueCfg.ID,
+				q.logger.Debug(me,
 					"message_id", aws.ToString(m.sqsMessage.MessageId))
 			}
 
@@ -245,8 +248,7 @@ func (app *application) batchPublish(q *queue, msg []message) {
 
 	pub, errPub := q.publish.publish(q, msg)
 	if errPub != nil {
-		slog.Error(me,
-			"queue_id", q.queueCfg.ID,
+		q.logger.Error(me,
 			"error", errPub,
 			"sleeping", q.queueCfg.PublishErrorCooldown)
 		time.Sleep(q.queueCfg.PublishErrorCooldown)
@@ -256,13 +258,13 @@ func (app *application) batchPublish(q *queue, msg []message) {
 	for _, m := range pub {
 		// debug logs - what we published
 		if app.cfg.logMessageBody {
-			slog.Debug(me,
-				"queue_id", q.queueCfg.ID,
+			q.logger.Debug(me,
+				"latency_ms", time.Since(m.receivedAt).Milliseconds(),
 				"message_id", aws.ToString(m.sqsMessage.MessageId),
 				"message_body", aws.ToString(m.sqsMessage.Body))
 		} else {
-			slog.Debug(me,
-				"queue_id", q.queueCfg.ID,
+			q.logger.Debug(me,
+				"latency_ms", time.Since(m.receivedAt).Milliseconds(),
 				"message_id", aws.ToString(m.sqsMessage.MessageId))
 		}
 
@@ -280,8 +282,7 @@ func (app *application) batchDelete(q *queue, msg []message) {
 
 	del, errDel := q.delete.delete(q, msg)
 	if errDel != nil {
-		slog.Error(me,
-			"queue_id", q.queueCfg.ID,
+		q.logger.Error(me,
 			"error", errDel,
 			"sleeping", q.queueCfg.DeleteErrorCooldown)
 		time.Sleep(q.queueCfg.DeleteErrorCooldown)
@@ -291,13 +292,11 @@ func (app *application) batchDelete(q *queue, msg []message) {
 	for _, m := range del {
 		// debug logs - what we deleted
 		if app.cfg.logMessageBody {
-			slog.Debug(me,
-				"queue_id", q.queueCfg.ID,
+			q.logger.Debug(me,
 				"message_id", aws.ToString(m.sqsMessage.MessageId),
 				"message_body", aws.ToString(m.sqsMessage.Body))
 		} else {
-			slog.Debug(me,
-				"queue_id", q.queueCfg.ID,
+			q.logger.Debug(me,
 				"message_id", aws.ToString(m.sqsMessage.MessageId))
 		}
 	}
@@ -409,4 +408,6 @@ type queue struct {
 	receive receiver
 	publish publisher
 	delete  deleter
+
+	logger *slog.Logger
 }

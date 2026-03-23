@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"sync"
 	"time"
 
@@ -65,8 +64,7 @@ func (d *deleterReal) delete(q *queue, msg []message) ([]message, error) {
 
 	// Log partial failures.
 	for _, fail := range resp.Failed {
-		slog.Error(me,
-			"queue_id", q.queueCfg.ID,
+		q.logger.Error(me,
 			"error", "partial delete failure",
 			"error_code", aws.ToString(fail.Code),
 			"batch_entry_id", aws.ToString(fail.Id),
@@ -146,8 +144,7 @@ func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
 
 	// Log partial failures.
 	for _, fail := range resp.Failed {
-		slog.Error(me,
-			"queue_id", q.queueCfg.ID,
+		q.logger.Error(me,
 			"error", "partial publish failure",
 			"error_code", aws.ToString(fail.Code),
 			"batch_entry_id", aws.ToString(fail.Id),
@@ -257,9 +254,8 @@ func (r *receiverReal) receive(q *queue) ([]message, bool, error) {
 			aws.ToBool(q.queueCfg.CopyAttributes),
 			aws.ToBool(q.queueCfg.CopyMesssageGroupID))
 		if errMsg != nil {
-			slog.Error(me,
-				"new_message_error", errMsg,
-				"queue_id", q.queueCfg.ID)
+			q.logger.Error(me,
+				"new_message_error", errMsg)
 			continue
 		}
 
