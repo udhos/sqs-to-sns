@@ -1,5 +1,31 @@
 # sqs-to-sns
 
+# Running v2
+
+## Running from command line
+
+```bash
+# build
+go install github.com/udhos/sqs-to-sns/v2/cmd/sqs-to-sns@v2.0.0
+
+# run
+sqs-to-sns
+```
+
+## Running from docker hub
+
+```bash
+docker run -p 8080:8080 --rm udhos/sqs-to-sns:2.0.0
+```
+
+## Running from helm chart
+
+```bash
+helm repo add sqs-to-sns https://udhos.github.io/sqs-to-sns
+
+helm upgrade --install sqs-to-sns sqs-to-sns/sqs-to-sns --version 2.0.0
+```
+
 # How v2 differs from v1
 
 ## v1
