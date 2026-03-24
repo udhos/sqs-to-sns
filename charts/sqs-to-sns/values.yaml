@@ -34,6 +34,12 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
+# add labels to deploy (not to PODs)
+deployLabels: {}
+  # tags.datadoghq.com/env: dev
+  # tags.datadoghq.com/service: sqs-to-sns
+  # tags.datadoghq.com/version: 1.16.6
+
 # add custom labels to deployment pods
 customLabels:
   app: sqs-to-sns
