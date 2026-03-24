@@ -170,14 +170,27 @@ DOGSTATSD_SAMPLE_RATE | "1.0"
 DD_AGENT_HOST         | localhost
 DD_SERVICE            | ""
 
-Metric               | Type                | Description
+Metric                 | Type                | Description
 -- | -- | --
-forward_latency      | Gauge (min/avg/max) | End-to-end time from SQS receive to SNS publish.
-publish_channel_load | Gauge (min/avg/max) | Buffer saturation % (Current Len / Max Cap).
-delete_channel_load  | Gauge (min/avg/max) | Buffer saturation % (Current Len / Max Cap).
-receive_errors       | Count               | Number of SQS ReceiveMessage failures.
-publish_errors       | Count               | Number of SNS PublishBatch failures.
-delete_errors        | Count               | Number of SQS DeleteMessage failures.
+forward_latency        | Gauge (min/avg/max) | End-to-end time from SQS receive to SNS publish.
+publish_channel_load   | Gauge (min/avg/max) | Buffer saturation % (Current Len / Max Cap).
+delete_channel_load    | Gauge (min/avg/max) | Buffer saturation % (Current Len / Max Cap).
+receiver_goroutines    | Gauge (min/avg/max) | Active receiver goroutines.
+publisher_goroutines   | Gauge (min/avg/max) | Active publisher goroutines.
+janitor_goroutines     | Gauge (min/avg/max) | Active janitor goroutines.
+receive_errors         | Count               | Number of SQS ReceiveMessage failures.
+publish_errors         | Count               | Number of SNS PublishBatch failures.
+delete_errors          | Count               | Number of SQS DeleteMessage failures.
+receives               | Count               | Number of SQS ReceiveMessage API calls made.
+publishes              | Count               | Number of SNS PublishBatch API calls made.
+deletes                | Count               | Number of SQS DeleteMessage API calls made.
+partial_publishes      | Count               | Number of SNS PublishBatch calls with partial success.
+partial_deletes        | Count               | Number of SQS DeleteMessage calls with partial success.
+received_messages      | Count               | Number of messages received from SQS.
+published_messages     | Count               | Number of messages successfully published to SNS.
+deleted_messages       | Count               | Number of messages successfully deleted from SQS.
+goroutine_spawns       | Count               | Number of goroutines spawned.
+goroutine_exits        | Count               | Number of goroutines exited.
 
 # Graceful shutdown
 

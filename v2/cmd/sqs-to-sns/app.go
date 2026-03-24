@@ -81,6 +81,9 @@ func (app *application) stopReaders() {
 func (app *application) startReader(q *queue, root bool) {
 	const me = "reader"
 
+	q.stats.goroutineSpawns.Add(1)      // Record the start
+	defer q.stats.goroutineExits.Add(1) // Record the exit
+
 	defer q.readers.Add(-1)
 
 	for {
@@ -101,6 +104,10 @@ func (app *application) startReader(q *queue, root bool) {
 			time.Sleep(q.queueCfg.ReceiveErrorCooldown)
 			continue
 		}
+
+		// Record metrics
+		q.stats.receives.Add(1)
+		q.stats.receivedMessages.Add(uint64(len(msg)))
 
 		emptyReceive := len(msg) == 0
 
@@ -145,6 +152,7 @@ func (app *application) startReader(q *queue, root bool) {
 				// so it is enough to check we are under the limit.
 				if q.readers.Load() < q.queueCfg.LimitReaders {
 					q.readers.Add(1)
+
 					go func() {
 						const siblingIsRoot = false // spawned sibling is never root
 						app.startReader(q, siblingIsRoot)
@@ -177,6 +185,8 @@ const (
 
 func (app *application) startPublisher(q *queue, root bool) {
 
+	q.stats.goroutineSpawns.Add(1)      // Record the start
+	defer q.stats.goroutineExits.Add(1) // Record the exit
 	defer q.publishers.Add(-1)
 
 	if root {
@@ -221,7 +231,7 @@ func (app *application) startPublisher(q *queue, root bool) {
 		//
 		load := channelLoad(q.publishCh)
 
-		q.stats.publishChLoad.record(uint64(load * 100)) // Convert 0.75 to 75%
+		q.stats.publishChLoad.record(uint64(load * 100))
 
 		if root {
 			// we are root, we might spawn sibling.
@@ -232,6 +242,7 @@ func (app *application) startPublisher(q *queue, root bool) {
 				// so it is enough to check we are under the limit.
 				if q.publishers.Load() < q.queueCfg.LimitPublishers {
 					q.publishers.Add(1)
+
 					go func() {
 						const siblingIsRoot = false // spawned sibling is never root
 						app.startPublisher(q, siblingIsRoot)
@@ -270,6 +281,13 @@ func (app *application) batchPublish(q *queue, msg []message) {
 			"sleeping", q.queueCfg.PublishErrorCooldown)
 		time.Sleep(q.queueCfg.PublishErrorCooldown)
 		return
+	}
+
+	// Record metrics
+	q.stats.publishes.Add(1)
+	q.stats.publishedMessages.Add(uint64(len(pub)))
+	if len(pub) < len(msg) {
+		q.stats.partialPublishes.Add(1)
 	}
 
 	for _, m := range pub {
@@ -311,6 +329,13 @@ func (app *application) batchDelete(q *queue, msg []message) {
 		return
 	}
 
+	// Record metrics
+	q.stats.deletes.Add(1)
+	q.stats.deletedMessages.Add(uint64(len(del)))
+	if len(del) < len(msg) {
+		q.stats.partialDeletes.Add(1)
+	}
+
 	for _, m := range del {
 		// debug logs - what we deleted
 		if app.cfg.logMessageBody {
@@ -326,6 +351,8 @@ func (app *application) batchDelete(q *queue, msg []message) {
 
 func (app *application) startJanitor(q *queue, root bool) {
 
+	q.stats.goroutineSpawns.Add(1)      // Record the start
+	defer q.stats.goroutineExits.Add(1) // Record the exit
 	defer q.janitors.Add(-1)
 
 	if root {
@@ -370,7 +397,7 @@ func (app *application) startJanitor(q *queue, root bool) {
 		//
 		load := channelLoad(q.deleteCh)
 
-		q.stats.deleteChLoad.record(uint64(load * 100)) // Convert 0.75 to 75%
+		q.stats.deleteChLoad.record(uint64(load * 100))
 
 		if root {
 			// we are root, we might spawn sibling.
@@ -381,6 +408,7 @@ func (app *application) startJanitor(q *queue, root bool) {
 				// so it is enough to check we are under the limit.
 				if q.janitors.Load() < q.queueCfg.LimitDeleters {
 					q.janitors.Add(1)
+
 					go func() {
 						const siblingIsRoot = false // spawned sibling is never root
 						app.startJanitor(q, siblingIsRoot)

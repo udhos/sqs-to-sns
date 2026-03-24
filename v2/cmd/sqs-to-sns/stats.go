@@ -11,9 +11,27 @@ type stats struct {
 	publishErrors atomic.Uint64 // count
 	deleteErrors  atomic.Uint64 // count
 
+	receives  atomic.Uint64 // count
+	publishes atomic.Uint64 // count
+	deletes   atomic.Uint64 // count
+
+	partialPublishes atomic.Uint64 // count
+	partialDeletes   atomic.Uint64 // count
+
+	receivedMessages  atomic.Uint64 // count
+	publishedMessages atomic.Uint64 // count
+	deletedMessages   atomic.Uint64 // count
+
+	goroutineSpawns atomic.Uint64 // count
+	goroutineExits  atomic.Uint64 // count
+
 	publishChLoad  gauge // percentage 0..100 (100 * len/cap)
 	deleteChLoad   gauge // percentage 0..100 (100 * len/cap)
 	forwardLatency gauge // milliseconds
+
+	receiverGoroutines  gauge // amount
+	publisherGoroutines gauge // amount
+	janitorGoroutines   gauge // amount
 }
 
 type statsSnapshot struct {
@@ -21,17 +39,40 @@ type statsSnapshot struct {
 	publishErrors uint64 // count
 	deleteErrors  uint64 // count
 
+	receives  uint64 // count
+	publishes uint64 // count
+	deletes   uint64 // count
+
+	partialPublishes uint64 // count
+	partialDeletes   uint64 // count
+
+	receivedMessages  uint64 // count
+	publishedMessages uint64 // count
+	deletedMessages   uint64 // count
+
+	goroutineSpawns uint64 // count
+	goroutineExits  uint64 // count
+
 	publishChLoad  gaugeSnapshot // percentage 0..100 (100 * len/cap)
 	deleteChLoad   gaugeSnapshot // percentage 0..100 (100 * len/cap)
 	forwardLatency gaugeSnapshot // milliseconds
+
+	receiverGoroutines  gaugeSnapshot // amount
+	publisherGoroutines gaugeSnapshot // amount
+	janitorGoroutines   gaugeSnapshot // amount
 }
 
 func initStats(s *stats) {
 	s.publishChLoad.min.Store(math.MaxUint64)
 	s.deleteChLoad.min.Store(math.MaxUint64)
 	s.forwardLatency.min.Store(math.MaxUint64)
+
+	s.receiverGoroutines.min.Store(math.MaxUint64)
+	s.publisherGoroutines.min.Store(math.MaxUint64)
+	s.janitorGoroutines.min.Store(math.MaxUint64)
 }
 
+// harvest is invoked every 20s to feed Dogstatsd.
 func (s *stats) harvest() statsSnapshot {
 	return statsSnapshot{
 		// Use Swap(0) to get the delta (count since last harvest)
@@ -39,10 +80,28 @@ func (s *stats) harvest() statsSnapshot {
 		publishErrors: s.publishErrors.Swap(0),
 		deleteErrors:  s.deleteErrors.Swap(0),
 
+		receives:  s.receives.Swap(0),
+		publishes: s.publishes.Swap(0),
+		deletes:   s.deletes.Swap(0),
+
+		partialPublishes: s.partialPublishes.Swap(0),
+		partialDeletes:   s.partialDeletes.Swap(0),
+
+		receivedMessages:  s.receivedMessages.Swap(0),
+		publishedMessages: s.publishedMessages.Swap(0),
+		deletedMessages:   s.deletedMessages.Swap(0),
+
+		goroutineSpawns: s.goroutineSpawns.Swap(0),
+		goroutineExits:  s.goroutineExits.Swap(0),
+
 		// Gauges already use Swap(0) internally
 		publishChLoad:  s.publishChLoad.harvest(),
 		deleteChLoad:   s.deleteChLoad.harvest(),
 		forwardLatency: s.forwardLatency.harvest(),
+
+		receiverGoroutines:  s.receiverGoroutines.harvest(),
+		publisherGoroutines: s.publisherGoroutines.harvest(),
+		janitorGoroutines:   s.janitorGoroutines.harvest(),
 	}
 }
 
