@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -47,6 +48,8 @@ const version = "1.3.0"
 
 const batch = 10
 
+const snsPayloadLimit = 262144
+
 func main() {
 
 	me := filepath.Base(os.Args[0])
@@ -58,15 +61,24 @@ func main() {
 	var showVersion bool
 	var debug bool
 	var attributes int
+	var sizeMin int
+	var sizeMax int
+	var batchSizeLimit int
+	var otel bool
 
 	flag.IntVar(&count, "count", 30, "total number of messages to send")
 	flag.IntVar(&writers, "writers", 30, "number of concurrent writers")
 	flag.Var(&conf.queueURL, "queueURL", "required queue URL (repeat for multiple queues)")
 	flag.StringVar(&conf.roleArn, "roleArn", "", "optional role ARN")
 	flag.StringVar(&conf.endpointURL, "endpointURL", "", "optional endpoint URL")
-	flag.BoolVar(&showVersion, "version", showVersion, "show version")
-	flag.BoolVar(&debug, "debug", debug, "debug")
-	flag.IntVar(&attributes, "attributes", 1, "number of attributes to send")
+	flag.BoolVar(&showVersion, "version", false, "show version")
+	flag.BoolVar(&debug, "debug", false, "debug")
+	flag.IntVar(&attributes, "attributes", 0, "number of attributes to send")
+	flag.IntVar(&sizeMin, "sizeMin", 10000, "min for random message size")
+	flag.IntVar(&sizeMax, "sizeMax", 10000, "max for random message size")
+	flag.IntVar(&batchSizeLimit, "batchSizeLimit", snsPayloadLimit/10,
+		"if message random size hits this size it will be sent alone in a single message batch")
+	flag.BoolVar(&otel, "otel", false, "otel trace")
 	flag.Parse()
 
 	{
@@ -79,6 +91,11 @@ func main() {
 	}
 
 	log.Printf("queues: %s", conf.queueURL.String())
+	log.Printf("sizeMin=%d sizeMax=%d batchSizeLimit=%d", sizeMax, sizeMax, batchSizeLimit)
+
+	if sizeMax < sizeMin {
+		log.Fatalf("sizeMax=%d < sizeMin=%d", sizeMax, sizeMin)
+	}
 
 	//
 	// initialize tracing
@@ -89,8 +106,8 @@ func main() {
 	{
 		options := oteltrace.TraceOptions{
 			DefaultService:     me,
-			NoopTracerProvider: false,
-			Debug:              true,
+			NoopTracerProvider: !otel,
+			Debug:              debug,
 		}
 
 		tr, cancel, errTracer := oteltrace.TraceStart(options)
@@ -115,7 +132,13 @@ func main() {
 
 	messages := []types.SendMessageBatchRequestEntry{}
 
-	body := fmt.Sprintf("batch-sqs traceID:%s", traceID)
+	bodySize := rand.Intn(1+sizeMax-sizeMin) + sizeMin
+
+	if debug {
+		log.Printf("bodySize: %d", bodySize)
+	}
+
+	body := strings.Repeat("a", bodySize)
 
 	for i := range batch {
 		id := strconv.Itoa(i)
@@ -125,7 +148,7 @@ func main() {
 			MessageAttributes: make(map[string]types.MessageAttributeValue),
 		}
 
-		for j := 0; j < attributes; j++ {
+		for j := range attributes {
 			str := fmt.Sprintf("%d", j)
 			m.MessageAttributes[str] = types.MessageAttributeValue{
 				StringValue: aws.String(str),
@@ -140,6 +163,10 @@ func main() {
 		otelsqs.NewCarrier().Inject(ctx, m.MessageAttributes)
 
 		messages = append(messages, m)
+
+		if bodySize >= batchSizeLimit {
+			break // send as single message batch
+		}
 	}
 
 	begin := time.Now()
