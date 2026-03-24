@@ -8,12 +8,18 @@ RUN apk add git
 # Create appuser on builder image
 RUN adduser -D -g '' appuser
 
+WORKDIR /tmp/app
+
+# Cache dependencies: Only re-run if go.mod/sum changes
+COPY go.mod go.sum /tmp/app/
+RUN go mod download
+
+# Copy files
 COPY ./cmd/ /tmp/app/cmd
 COPY ./internal/ /tmp/app/internal
-COPY go.* /tmp/app/
-WORKDIR /tmp/app
+
+# Build
 RUN rm -f ./orchestrion.tool.go
-RUN go mod tidy
 RUN go env -w CGO_ENABLED=0
 RUN go build -o /tmp/sqs-to-sns github.com/udhos/sqs-to-sns/v2/cmd/sqs-to-sns
 
