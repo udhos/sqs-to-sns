@@ -4,6 +4,9 @@ metadata:
   name: {{ include "sqs-to-sns.fullname" . }}
   labels:
     {{- include "sqs-to-sns.labels" . | nindent 4 }}
+    {{- if .Values.deployLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.deployLabels "context" $ ) | nindent 4 }}
+    {{- end }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
