@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,14 +23,27 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+type flagURL struct {
+	urls []string
+}
+
+func (u *flagURL) String() string {
+	return strings.Join(u.urls, ",")
+}
+
+func (u *flagURL) Set(value string) error {
+	u.urls = append(u.urls, value)
+	return nil
+}
+
 type config struct {
-	queueURL    string
+	queueURL    flagURL
 	roleArn     string
 	endpointURL string
 	wg          sync.WaitGroup
 }
 
-const version = "1.2.0"
+const version = "1.3.0"
 
 const batch = 10
 
@@ -47,7 +61,7 @@ func main() {
 
 	flag.IntVar(&count, "count", 30, "total number of messages to send")
 	flag.IntVar(&writers, "writers", 30, "number of concurrent writers")
-	flag.StringVar(&conf.queueURL, "queueURL", "", "required queue URL")
+	flag.Var(&conf.queueURL, "queueURL", "required queue URL (repeat for multiple queues)")
 	flag.StringVar(&conf.roleArn, "roleArn", "", "optional role ARN")
 	flag.StringVar(&conf.endpointURL, "endpointURL", "", "optional endpoint URL")
 	flag.BoolVar(&showVersion, "version", showVersion, "show version")
@@ -63,6 +77,8 @@ func main() {
 		}
 		log.Print(v)
 	}
+
+	log.Printf("queues: %s", conf.queueURL.String())
 
 	//
 	// initialize tracing
@@ -154,24 +170,29 @@ func writer(id, total int, conf *config, count int, messages []types.SendMessage
 
 	const cooldown = 5 * time.Second
 
-	sqsClient := sqsclient.NewClient(me, conf.queueURL, conf.roleArn, conf.endpointURL)
+	// create sqs clients
+	var sqsClients []*sqs.Client
+	for _, queueURL := range conf.queueURL.urls {
+		sqsClient := sqsclient.NewClient(me, queueURL, conf.roleArn, conf.endpointURL)
+		sqsClients = append(sqsClients, sqsClient)
+	}
 
 	for sent := 0; sent < count; {
-		input := &sqs.SendMessageBatchInput{
-			Entries:  messages,
-			QueueUrl: &conf.queueURL,
+		for i, queueURL := range conf.queueURL.urls {
+
+			output, errSend := send(sqsClients[i], messages, queueURL)
+			if errSend != nil {
+				log.Printf("%s: SendMessageBatch error: %v, sleeping %v",
+					me, errSend, cooldown)
+				time.Sleep(cooldown)
+				continue
+			}
+			for _, f := range output.Failed {
+				log.Printf("%s: message failed: id=%s sender_fault=%t code=%s message:%s",
+					me, aws.ToString(f.Id), f.SenderFault, aws.ToString(f.Code), aws.ToString(f.Message))
+			}
 		}
-		output, errSend := sqsClient.SendMessageBatch(context.TODO(), input)
-		if errSend != nil {
-			log.Printf("%s: SendMessageBatch error: %v, sleeping %v",
-				me, errSend, cooldown)
-			time.Sleep(cooldown)
-			continue
-		}
-		for _, f := range output.Failed {
-			log.Printf("%s: message failed: id=%s sender_fault=%t code=%s message:%s",
-				me, aws.ToString(f.Id), f.SenderFault, aws.ToString(f.Code), aws.ToString(f.Message))
-		}
+
 		sent += batch
 	}
 
@@ -181,4 +202,14 @@ func writer(id, total int, conf *config, count int, messages []types.SendMessage
 
 	log.Printf("%s: sent=%d interval=%v rate=%v messages/sec",
 		me, count, elap, rate)
+}
+
+func send(client *sqs.Client, messages []types.SendMessageBatchRequestEntry,
+	queueURL string) (*sqs.SendMessageBatchOutput, error) {
+
+	input := &sqs.SendMessageBatchInput{
+		Entries:  messages,
+		QueueUrl: aws.String(queueURL),
+	}
+	return client.SendMessageBatch(context.TODO(), input)
 }
