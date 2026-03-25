@@ -44,7 +44,7 @@ type config struct {
 	wg          sync.WaitGroup
 }
 
-const version = "1.3.0"
+const version = "1.3.1"
 
 const batch = 10
 
@@ -66,8 +66,8 @@ func main() {
 	var batchSizeLimit int
 	var otel bool
 
-	flag.IntVar(&count, "count", 30, "total number of messages to send")
-	flag.IntVar(&writers, "writers", 30, "number of concurrent writers")
+	flag.IntVar(&count, "count", 20, "total number of messages to send")
+	flag.IntVar(&writers, "writers", 2, "number of concurrent writers")
 	flag.Var(&conf.queueURL, "queueURL", "required queue URL (repeat for multiple queues)")
 	flag.StringVar(&conf.roleArn, "roleArn", "", "optional role ARN")
 	flag.StringVar(&conf.endpointURL, "endpointURL", "", "optional endpoint URL")
@@ -130,11 +130,50 @@ func main() {
 
 	traceID := span.SpanContext().TraceID().String()
 
+	opt := options{
+		ctx:            ctx,
+		sizeMin:        sizeMin,
+		sizeMax:        sizeMax,
+		batchSizeLimit: batchSizeLimit,
+		attributes:     attributes,
+		traceID:        traceID,
+		debug:          debug,
+	}
+
+	begin := time.Now()
+
+	for i := 1; i <= writers; i++ {
+		conf.wg.Add(1)
+		go writer(i, writers, conf, count/writers, opt)
+	}
+
+	conf.wg.Wait()
+
+	elap := time.Since(begin)
+
+	rate := float64(count) / (float64(elap) / float64(time.Second))
+
+	log.Printf("%s: sent=%d interval=%v rate=%f messages/sec",
+		me, count, elap, rate)
+}
+
+type options struct {
+	ctx            context.Context
+	sizeMin        int
+	sizeMax        int
+	batchSizeLimit int
+	attributes     int
+	traceID        string
+	debug          bool
+}
+
+func generateBatch(opt options) []types.SendMessageBatchRequestEntry {
+
 	messages := []types.SendMessageBatchRequestEntry{}
 
-	bodySize := rand.Intn(1+sizeMax-sizeMin) + sizeMin
+	bodySize := rand.Intn(1+opt.sizeMax-opt.sizeMin) + opt.sizeMin
 
-	if debug {
+	if opt.debug {
 		log.Printf("bodySize: %d", bodySize)
 	}
 
@@ -148,7 +187,7 @@ func main() {
 			MessageAttributes: make(map[string]types.MessageAttributeValue),
 		}
 
-		for j := range attributes {
+		for j := range opt.attributes {
 			str := fmt.Sprintf("%d", j)
 			m.MessageAttributes[str] = types.MessageAttributeValue{
 				StringValue: aws.String(str),
@@ -156,42 +195,28 @@ func main() {
 			}
 		}
 
-		if debug {
-			log.Printf("MessageId:%s TraceId:%s", aws.ToString(m.Id), traceID)
+		if opt.debug {
+			log.Printf("MessageId:%s TraceId:%s", aws.ToString(m.Id), opt.traceID)
 		}
 
-		otelsqs.NewCarrier().Inject(ctx, m.MessageAttributes)
+		otelsqs.NewCarrier().Inject(opt.ctx, m.MessageAttributes)
 
 		messages = append(messages, m)
 
-		if bodySize >= batchSizeLimit {
+		if bodySize >= opt.batchSizeLimit {
 			break // send as single message batch
 		}
 	}
 
-	begin := time.Now()
-
-	for i := 1; i <= writers; i++ {
-		conf.wg.Add(1)
-		go writer(i, writers, conf, count/writers, messages)
-	}
-
-	conf.wg.Wait()
-
-	elap := time.Since(begin)
-
-	rate := float64(count) / (float64(elap) / float64(time.Second))
-
-	log.Printf("%s: sent=%d interval=%v rate=%v messages/sec",
-		me, count, elap, rate)
+	return messages
 }
 
-func writer(id, total int, conf *config, count int, messages []types.SendMessageBatchRequestEntry) {
+func writer(id, total int, conf *config, messagesToSendPerWriter int, opt options) {
 	defer conf.wg.Done()
 
 	me := fmt.Sprintf("writer: [%d/%d]", id, total)
 
-	log.Printf("%s: will send %d", me, count)
+	log.Printf("%s: will send %d", me, messagesToSendPerWriter)
 
 	begin := time.Now()
 
@@ -204,10 +229,15 @@ func writer(id, total int, conf *config, count int, messages []types.SendMessage
 		sqsClients = append(sqsClients, sqsClient)
 	}
 
-	for sent := 0; sent < count; {
+	var sent int
+
+	for sent < messagesToSendPerWriter {
+
+		messages := generateBatch(opt)
+
 		for i, queueURL := range conf.queueURL.urls {
 
-			output, errSend := send(sqsClients[i], messages, queueURL)
+			output, errSend := send(sqsClients[i], queueURL, messages)
 			if errSend != nil {
 				log.Printf("%s: SendMessageBatch error: %v, sleeping %v",
 					me, errSend, cooldown)
@@ -220,23 +250,25 @@ func writer(id, total int, conf *config, count int, messages []types.SendMessage
 			}
 		}
 
-		sent += batch
+		sent += len(messages)
 	}
 
 	elap := time.Since(begin)
 
-	rate := float64(count) / float64(elap/time.Second)
+	rate := float64(sent) / (float64(elap) / float64(time.Second))
 
-	log.Printf("%s: sent=%d interval=%v rate=%v messages/sec",
-		me, count, elap, rate)
+	log.Printf("%s: sent=%d interval=%v rate=%f messages/sec",
+		me, messagesToSendPerWriter, elap, rate)
 }
 
-func send(client *sqs.Client, messages []types.SendMessageBatchRequestEntry,
-	queueURL string) (*sqs.SendMessageBatchOutput, error) {
+func send(client *sqs.Client,
+	queueURL string,
+	messages []types.SendMessageBatchRequestEntry) (*sqs.SendMessageBatchOutput, error) {
 
 	input := &sqs.SendMessageBatchInput{
 		Entries:  messages,
 		QueueUrl: aws.String(queueURL),
 	}
+
 	return client.SendMessageBatch(context.TODO(), input)
 }

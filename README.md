@@ -235,9 +235,12 @@ Use `batch-sqs` to send messages to an SQS queue.
 **CAUTION**: With default parameters you would inject your SQS with 10000 messages at a rate of ~1000 messages/sec.
 
 ```
-batch-sqs -queueURL https://sqs.us-east-1.amazonaws.com/111111111111/queue_name
+batch-sqs -count 2 -writers 2 -queueURL https://sqs.us-east-1.amazonaws.com/111111111111/queue_name
 
-2023/04/17 00:27:04 batch-sqs: sent=10000 interval=9.275251836s rate=1111.111111111111 messages/sec
+count=2:   will send a total of 2 messages
+writers=2: 2 writers, each writer will send 1 message
+
+2026/03/24 22:29:38 batch-sqs: sent=20 interval=2.598466335s rate=7.696848 messages/sec
 ```
 
 # Docker
