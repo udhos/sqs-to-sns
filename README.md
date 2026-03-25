@@ -232,8 +232,6 @@ The role in "topic role ARN" must allow action `sns:Publish` to destination topi
 
 Use `batch-sqs` to send messages to an SQS queue.
 
-**CAUTION**: With default parameters you would inject your SQS with 10000 messages at a rate of ~1000 messages/sec.
-
 ```
 batch-sqs -count 2 -writers 2 -queueURL https://sqs.us-east-1.amazonaws.com/111111111111/queue_name
 
