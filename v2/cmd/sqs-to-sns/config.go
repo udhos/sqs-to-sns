@@ -20,6 +20,10 @@ type config struct {
 	flushIntervalDelete  time.Duration
 	awsAPITimeout        time.Duration
 	queues               []queueConfig
+	watermarkLowPublish  float32
+	watermarkHighPublish float32
+	watermarkLowDelete   float32
+	watermarkHighDelete  float32
 	dogstatsdEnable      bool
 	dogstatsdInterval    time.Duration
 	dogstatsdNamespace   string
@@ -59,6 +63,10 @@ func newConfig(env *envconfig.Env) config {
 		flushIntervalPublish: env.Duration("FLUSH_INTERVAL_PUBLISH", 500*time.Millisecond),
 		flushIntervalDelete:  env.Duration("FLUSH_INTERVAL_DELETE", time.Second),
 		awsAPITimeout:        env.Duration("AWS_API_TIMEOUT", 30*time.Second),
+		watermarkLowPublish:  float32(env.Float64("WATERMARK_LOW_PUBLISH", .01)),  // 1%
+		watermarkHighPublish: float32(env.Float64("WATERMARK_HIGH_PUBLISH", .01)), // 1%
+		watermarkLowDelete:   float32(env.Float64("WATERMARK_LOW_DELETE", .33)),   // 33%
+		watermarkHighDelete:  float32(env.Float64("WATERMARK_HIGH_DELETE", .66)),  // 66%
 		dogstatsdEnable:      env.Bool("DOGSTATSD_ENABLE", false),
 		dogstatsdInterval:    env.Duration("DOGSTATSD_INTERVAL", 20*time.Second),
 		dogstatsdNamespace:   env.String("DOGSTATSD_NAMESPACE", ""),

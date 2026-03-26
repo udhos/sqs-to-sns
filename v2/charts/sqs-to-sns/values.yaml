@@ -81,6 +81,11 @@ configMapProperties:
   FLUSH_INTERVAL_DELETE: 1s
   AWS_API_TIMEOUT: 30s
   #
+  WATERMARK_LOW_PUBLISH: ".01"  # 1%
+  WATERMARK_HIGH_PUBLISH: ".01" # 1%
+  WATERMARK_LOW_DELETE: ".33"   # 33%
+  WATERMARK_HIGH_DELETE: ".66"  # 66%
+  #
   # health checks (use for livenessProbe only, not for readinessProbe)
   #
   HEALTH_ADDR: :8080

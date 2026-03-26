@@ -178,11 +178,6 @@ func (app *application) startReader(q *queue, root bool) {
 	}
 }
 
-const (
-	watermarkLow  = 1.0 / 3.0
-	watermarkHigh = 2.0 / 3.0
-)
-
 func (app *application) startPublisher(q *queue, root bool) {
 
 	q.stats.goroutineSpawns.Add(1)      // Record the start
@@ -235,7 +230,7 @@ func (app *application) startPublisher(q *queue, root bool) {
 
 		if root {
 			// we are root, we might spawn sibling.
-			if load > watermarkHigh {
+			if load > app.cfg.watermarkHighPublish {
 				// incoming channel is getting full, then we should spawn a sibling.
 				//
 				// we are the unique (root) goroutine spawning siblings,
@@ -253,7 +248,7 @@ func (app *application) startPublisher(q *queue, root bool) {
 		}
 
 		// we are non-root, we might exit. root never exits.
-		if load < watermarkLow {
+		if load < app.cfg.watermarkLowPublish {
 			// incoming channel is getting empty, then exit.
 			break
 		}
@@ -401,7 +396,7 @@ func (app *application) startJanitor(q *queue, root bool) {
 
 		if root {
 			// we are root, we might spawn sibling.
-			if load > watermarkHigh {
+			if load > app.cfg.watermarkHighDelete {
 				// incoming channel is getting full, then we should spawn a sibling.
 				//
 				// we are the unique (root) goroutine spawning siblings,
@@ -419,7 +414,7 @@ func (app *application) startJanitor(q *queue, root bool) {
 		}
 
 		// we are non-root, we might exit. root never exits.
-		if load < watermarkLow {
+		if load < app.cfg.watermarkLowDelete {
 			// incoming channel is getting empty, then exit.
 			break
 		}
