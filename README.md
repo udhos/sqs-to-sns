@@ -12,6 +12,12 @@ This README covers version v1.
 
 **sqs-to-sns v2** is available here: [sqs-to-sns v2](v2).
 
+| ⚠️ This README covers version **v1** |
+| :--- |
+| **sqs-to-sns v2** is available here: [**🚀 sqs-to-sns v2**](v2) |
+| Version 2 is has higher throughput and is more cost-effective. |
+
+
 * [Features](#features)
 * [Build and run](#build-and-run)
 * [Configuration](#configuration)
