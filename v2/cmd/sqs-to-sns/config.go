@@ -110,16 +110,18 @@ func applyQueuesDefaults(queues []queueConfig) []queueConfig {
 }
 
 const (
-	defaultBufferSize                 = 1000
-	defaultLimitConcurrency           = 50
-	defaultNumberOfMessages           = 10
-	defaultWaitTimeSeconds      int32 = 20
-	defaultCopyAttributes             = true
-	defaultCopyMesssageGroupID        = true
-	defaultEmptyReceiveCooldown       = 1 * time.Second
-	defaultReceiveErrorCooldown       = 1 * time.Second
-	defaultPublishErrorCooldown       = 1 * time.Second
-	defaultDeleteErrorCooldown        = 1 * time.Second
+	defaultBufferSize                       = 1000
+	defaultLimitConcurrencyReaders          = 10
+	defaultLimitConcurrencyPublishers       = 100
+	defaultLimitConcurrencyDeleters         = 100
+	defaultNumberOfMessages                 = 10
+	defaultWaitTimeSeconds            int32 = 20
+	defaultCopyAttributes                   = true
+	defaultCopyMesssageGroupID              = true
+	defaultEmptyReceiveCooldown             = 1 * time.Second
+	defaultReceiveErrorCooldown             = 1 * time.Second
+	defaultPublishErrorCooldown             = 1 * time.Second
+	defaultDeleteErrorCooldown              = 1 * time.Second
 )
 
 func queueDefaults(q queueConfig) queueConfig {
@@ -130,13 +132,13 @@ func queueDefaults(q queueConfig) queueConfig {
 		q.BufferSizeDelete = defaultBufferSize
 	}
 	if q.LimitReaders < 1 {
-		q.LimitReaders = defaultLimitConcurrency
+		q.LimitReaders = defaultLimitConcurrencyReaders
 	}
 	if q.LimitPublishers < 1 {
-		q.LimitPublishers = defaultLimitConcurrency
+		q.LimitPublishers = defaultLimitConcurrencyPublishers
 	}
 	if q.LimitDeleters < 1 {
-		q.LimitDeleters = defaultLimitConcurrency
+		q.LimitDeleters = defaultLimitConcurrencyDeleters
 	}
 	if q.MaxNumberOfMessages < 1 {
 		q.MaxNumberOfMessages = defaultNumberOfMessages

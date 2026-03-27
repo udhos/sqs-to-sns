@@ -148,9 +148,9 @@ The env var `QUEUES` points to yaml file declaring a list of queue-to-topic mapp
   # topic_role_arn: ""
   # buffer_size_publish: 1000
   # buffer_size_delete: 1000
-  # limit_readers: 50
-  # limit_publishers: 50
-  # limit_deleters: 50
+  # limit_readers: 10
+  # limit_publishers: 100
+  # limit_deleters: 100
   # max_number_of_messages: 10 # 1..10 (default 10)
   # wait_time_seconds: 20      # 0..20 (default 20)
   # copy_attributes: true
