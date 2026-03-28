@@ -63,7 +63,7 @@ func newConfig(env *envconfig.Env) config {
 		flushIntervalPublish: env.Duration("FLUSH_INTERVAL_PUBLISH", 500*time.Millisecond),
 		flushIntervalDelete:  env.Duration("FLUSH_INTERVAL_DELETE", time.Second),
 		awsAPITimeout:        env.Duration("AWS_API_TIMEOUT", 30*time.Second),
-		watermarkLowPublish:  float32(env.Float64("WATERMARK_LOW_PUBLISH", .01)),  // 1%
+		watermarkLowPublish:  float32(env.Float64("WATERMARK_LOW_PUBLISH", .0)),   // 0
 		watermarkHighPublish: float32(env.Float64("WATERMARK_HIGH_PUBLISH", .01)), // 1%
 		watermarkLowDelete:   float32(env.Float64("WATERMARK_LOW_DELETE", .33)),   // 33%
 		watermarkHighDelete:  float32(env.Float64("WATERMARK_HIGH_DELETE", .66)),  // 66%

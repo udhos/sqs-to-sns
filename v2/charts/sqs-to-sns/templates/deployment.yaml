@@ -52,7 +52,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- if .Values.serviceAccount.create }}
-      serviceAccountName: {{ include "sqs-to-sns.fullname" . }}
+      serviceAccountName: {{ include "sqs-to-sns.serviceAccountName" . }}
       {{- end}}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
