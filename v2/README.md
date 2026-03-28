@@ -99,7 +99,7 @@ and metadata, ensuring no batch exceeds the 256KB AWS limit (262,144 bytes).
 - [X] Document backpressure.
 - [X] Document shutdown.
 - [X] Document goroutines root/nonroot lifespan
-- [ ] Run benchmark on staging environment.
+- [X] Run benchmark on staging environment.
 
 # Global env vars
 
@@ -207,3 +207,40 @@ During SIGTERM, the application stops the SQS Readers immediately. However, Publ
 All batching and flushing paths ultimately write to bounded/buffered channels, ensuring that backpressure is preserved and propagates through the entire pipeline.
 
 All internal pipelines use bounded channels (buffers). If SNS slows down, the publishCh fills up, which naturally slows down the receivers, ensuring the application memory usage remains constant regardless of traffic spikes.
+
+# Sizing
+
+How to size the tool for Kubernetes.
+
+As example, we ran the tool under the conditions shown below.
+
+```bash
+Test Parameters:
+
+AWS EC2 instance:     c6a.4xlarge
+Test load:            4166 messages/sec
+SQS payload size:     10,000 bytes
+K8s POD CPU request:  500m
+K8s POD CPU limit:    1
+K8s HPA target:       80%
+
+Test Results:
+
+Tool e2e Latency:     min=18ms avg=36ms max=383ms
+POD CPU Average:      374m
+POD Mem Average:      58Mi
+HPA number of PODs:   5
+```
+
+HPA would further scale up the number of replicas at 400m (80% x 500m).
+Thus we know 374m is close to the scaling threshold.
+From the good latency values, we can tell that each POD is not saturated to the point of degradation.
+We calculate the POD capacity: 4166 messages/sec / 5 = 833 messages/sec.
+
+Then each POD can deliver at least 833 messages/sec without degradation.
+
+In production we want to support peaks as high as 30,000 messages/sec:
+
+30,000 / 833 = 36 PODs
+
+36 is the value to be used in HPA maxReplicas in order to support up to 30,000 messages/sec.
