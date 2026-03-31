@@ -44,7 +44,7 @@ type config struct {
 	wg          sync.WaitGroup
 }
 
-const version = "1.3.1"
+const version = "1.4.0"
 
 const batch = 10
 
@@ -65,6 +65,7 @@ func main() {
 	var sizeMax int
 	var batchSizeLimit int
 	var otel bool
+	var errorCooldown time.Duration
 
 	flag.IntVar(&count, "count", 20, "total number of messages to send")
 	flag.IntVar(&writers, "writers", 2, "number of concurrent writers")
@@ -79,6 +80,7 @@ func main() {
 	flag.IntVar(&batchSizeLimit, "batchSizeLimit", snsPayloadLimit/10,
 		"if message random size hits this size it will be sent alone in a single message batch")
 	flag.BoolVar(&otel, "otel", false, "otel trace")
+	flag.DurationVar(&errorCooldown, "errorCooldown", 5*time.Second, "cooldown time after error before retrying")
 	flag.Parse()
 
 	{
@@ -138,6 +140,8 @@ func main() {
 		attributes:     attributes,
 		traceID:        traceID,
 		debug:          debug,
+		otel:           otel,
+		errorCooldown:  errorCooldown,
 	}
 
 	begin := time.Now()
@@ -165,6 +169,8 @@ type options struct {
 	attributes     int
 	traceID        string
 	debug          bool
+	otel           bool
+	errorCooldown  time.Duration
 }
 
 func generateBatch(opt options) []types.SendMessageBatchRequestEntry {
@@ -199,7 +205,9 @@ func generateBatch(opt options) []types.SendMessageBatchRequestEntry {
 			log.Printf("MessageId:%s TraceId:%s", aws.ToString(m.Id), opt.traceID)
 		}
 
-		otelsqs.NewCarrier().Inject(opt.ctx, m.MessageAttributes)
+		if opt.otel {
+			otelsqs.NewCarrier().Inject(opt.ctx, m.MessageAttributes)
+		}
 
 		messages = append(messages, m)
 
@@ -220,8 +228,6 @@ func writer(id, total int, conf *config, messagesToSendPerWriter int, opt option
 
 	begin := time.Now()
 
-	const cooldown = 5 * time.Second
-
 	// create sqs clients
 	var sqsClients []*sqs.Client
 	for _, queueURL := range conf.queueURL.urls {
@@ -230,6 +236,7 @@ func writer(id, total int, conf *config, messagesToSendPerWriter int, opt option
 	}
 
 	var sent int
+	var errors int
 
 	for sent < messagesToSendPerWriter {
 
@@ -239,9 +246,10 @@ func writer(id, total int, conf *config, messagesToSendPerWriter int, opt option
 
 			output, errSend := send(sqsClients[i], queueURL, messages)
 			if errSend != nil {
-				log.Printf("%s: SendMessageBatch error: %v, sleeping %v",
-					me, errSend, cooldown)
-				time.Sleep(cooldown)
+				errors++
+				log.Printf("%s: SendMessageBatch error %d: %v, sleeping cooldown=%v",
+					me, errors, errSend, opt.errorCooldown)
+				time.Sleep(opt.errorCooldown)
 				continue
 			}
 			for _, f := range output.Failed {
@@ -257,8 +265,8 @@ func writer(id, total int, conf *config, messagesToSendPerWriter int, opt option
 
 	rate := float64(sent) / (float64(elap) / float64(time.Second))
 
-	log.Printf("%s: sent=%d interval=%v rate=%f messages/sec",
-		me, messagesToSendPerWriter, elap, rate)
+	log.Printf("%s: sent=%d interval=%v rate=%f messages/sec errors=%d",
+		me, messagesToSendPerWriter, elap, rate, errors)
 }
 
 func send(client *sqs.Client,
