@@ -126,7 +126,7 @@ func (r *receiverMock) receive(_ *queue) ([]message, bool, error) {
 	var result []message
 
 	for range batch {
-		m, errMsg := createMessage(10)
+		m, errMsg := createTestMessage(10)
 		if errMsg != nil {
 			return nil, stopped, errMsg
 		}
@@ -149,8 +149,8 @@ func ExampleGetBatchSizing() {
 	// 1. Create a slice of messages using your helper
 	// Message 1: 100 bytes
 	// Message 2: 200 bytes
-	msg1, _ := createMessage(100)
-	msg2, _ := createMessage(200)
+	msg1, _ := createTestMessage(100)
+	msg2, _ := createTestMessage(200)
 	msgs := []message{msg1, msg2}
 
 	// 2. Call the function

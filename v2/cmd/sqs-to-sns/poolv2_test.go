@@ -13,9 +13,9 @@ func TestPoolV2BinPacking(t *testing.T) {
 	p := newPoolV2(10)
 
 	// Input: [4, 4, 5, 1, 1]
-	m4, _ := createMessage(4)
-	m5, _ := createMessage(5)
-	m1, _ := createMessage(1)
+	m4, _ := createTestMessage(4)
+	m5, _ := createTestMessage(5)
+	m1, _ := createTestMessage(1)
 
 	p.add(m4)
 	p.add(m4)
@@ -61,10 +61,10 @@ func TestPoolV2SurvivorOrder(t *testing.T) {
 	p := newPoolV2(10)
 
 	// We'll add 5 messages. We'll extract #1 and #3.
-	m2, _ := createMessage(2) // idx 0
-	m8, _ := createMessage(8) // idx 1 (This will be taken with idx 0)
-	mA, _ := createMessage(1) // idx 2 (Survivor A)
-	mB, _ := createMessage(1) // idx 3 (Survivor B)
+	m2, _ := createTestMessage(2) // idx 0
+	m8, _ := createTestMessage(8) // idx 1 (This will be taken with idx 0)
+	mA, _ := createTestMessage(1) // idx 2 (Survivor A)
+	mB, _ := createTestMessage(1) // idx 3 (Survivor B)
 
 	p.add(m2)
 	p.add(m8)
@@ -94,7 +94,7 @@ func TestPoolV2MaxItems(t *testing.T) {
 	p := newPoolV2(1000) // Huge byte limit
 
 	// Add 15 tiny messages
-	m1, _ := createMessage(1)
+	m1, _ := createTestMessage(1)
 	for range 15 {
 		p.add(m1)
 	}
@@ -133,7 +133,7 @@ func TestPoolContract(t *testing.T) {
 			}
 
 			// 2. Requirement: getFullBatch requires 10 items (if below byte limit)
-			m1, _ := createMessage(1)
+			m1, _ := createTestMessage(1)
 			for range 9 {
 				p.add(m1)
 			}
@@ -167,9 +167,9 @@ func TestByteLimitContractV2(t *testing.T) {
 	limit := 10
 	p2 := newPoolV2(limit)
 
-	m6, _ := createMessage(6)
-	m5, _ := createMessage(5)
-	m1, _ := createMessage(1) // We'll add four of these
+	m6, _ := createTestMessage(6)
+	m5, _ := createTestMessage(5)
+	m1, _ := createTestMessage(1) // We'll add four of these
 
 	// Input: [6, 5, 1, 1, 1, 1]
 	p2.add(m6)
@@ -341,7 +341,7 @@ func TestPoolPayloadSizeV2(t *testing.T) {
 	// check avail api
 	//
 
-	m3, errMsg := createMessage(4)
+	m3, errMsg := createTestMessage(4)
 	if errMsg != nil {
 		t.Errorf("message: %v", errMsg)
 	}
@@ -423,7 +423,7 @@ func TestPoolPayloadSizeV2(t *testing.T) {
 	//
 
 	p = newPoolV2(10)
-	m5, errMsg := createMessage(5)
+	m5, errMsg := createTestMessage(5)
 	if errMsg != nil {
 		t.Errorf("message: %v", errMsg)
 	}
@@ -464,19 +464,19 @@ func TestPoolPayloadSizeV2(t *testing.T) {
 
 // go test -count 1 -run '^TestMessagePayloadV2$' ./...
 func TestMessagePayloadV2(t *testing.T) {
-	if _, err := createMessage(0); err != nil {
+	if _, err := createTestMessage(0); err != nil {
 		t.Errorf("payload=%d: error: %v", 0, err)
 	}
-	if _, err := createMessage(1); err != nil {
+	if _, err := createTestMessage(1); err != nil {
 		t.Errorf("payload=%d: error: %v", 1, err)
 	}
-	if _, err := createMessage(maxSnsPublishPayload - 1); err != nil {
+	if _, err := createTestMessage(maxSnsPublishPayload - 1); err != nil {
 		t.Errorf("payload=%d: error: %v", maxSnsPublishPayload-1, err)
 	}
-	if _, err := createMessage(maxSnsPublishPayload); err != nil {
+	if _, err := createTestMessage(maxSnsPublishPayload); err != nil {
 		t.Errorf("payload=%d: error: %v", maxSnsPublishPayload, err)
 	}
-	if _, err := createMessage(maxSnsPublishPayload + 1); err == nil {
+	if _, err := createTestMessage(maxSnsPublishPayload + 1); err == nil {
 		t.Errorf("payload=%d: unexpected success", maxSnsPublishPayload+1)
 	}
 }
@@ -484,7 +484,7 @@ func TestMessagePayloadV2(t *testing.T) {
 // go test -count 1 -run '^TestFullBatchLimitV2$' ./...
 func TestFullBatchLimitV2(t *testing.T) {
 
-	m, err := createMessage(1)
+	m, err := createTestMessage(1)
 	if err != nil {
 		t.Errorf("message error: %v", err)
 	}
@@ -535,8 +535,8 @@ func TestFullBatchLimitV2(t *testing.T) {
 
 func TestV2LargeMessageFlushesImmediately(t *testing.T) {
 	p := newPoolV2(10)
-	mLarge, _ := createMessage(9)
-	mSmall, _ := createMessage(2)
+	mLarge, _ := createTestMessage(9)
+	mSmall, _ := createTestMessage(2)
 
 	p.add(mLarge)
 	p.add(mSmall)

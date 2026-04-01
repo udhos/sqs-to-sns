@@ -138,7 +138,7 @@ func (r *benchReceiver) receive(_ *queue) ([]message, bool, error) {
 
 	res := make([]message, batchSize)
 	for i := range batchSize {
-		m, _ := createMessage(128)
+		m, _ := createTestMessage(128)
 		res[i] = m
 	}
 	return res, false, nil

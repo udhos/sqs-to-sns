@@ -22,6 +22,20 @@ type message struct {
 func newMessage(sqsMessage *sqstypes.Message, receivedAt time.Time,
 	copyAttributes, copyMessageGroupID bool) (message, error) {
 
+	m, snsPayloadBodySize, snsPayloadAttrSize := newMessageUnsafe(sqsMessage,
+		receivedAt, copyAttributes, copyMessageGroupID)
+
+	if m.snsPayloadSize > maxSnsPublishPayload {
+		return message{}, fmt.Errorf("invalid payload size for SNS (body=%d, attributes=%d): total=%d > limit=%d",
+			snsPayloadBodySize, snsPayloadAttrSize, m.snsPayloadSize, maxSnsPublishPayload)
+	}
+
+	return m, nil
+}
+
+func newMessageUnsafe(sqsMessage *sqstypes.Message, receivedAt time.Time,
+	copyAttributes, copyMessageGroupID bool) (message, int, int) {
+
 	snsEntry := snstypes.PublishBatchRequestEntry{
 		Message: sqsMessage.Body,
 	}
@@ -59,10 +73,5 @@ func newMessage(sqsMessage *sqstypes.Message, receivedAt time.Time,
 		snsPayloadSize: snsPayloadTotalSize,
 	}
 
-	if m.snsPayloadSize > maxSnsPublishPayload {
-		return message{}, fmt.Errorf("invalid payload size for SNS (body=%d, attributes=%d): total=%d > limit=%d",
-			snsPayloadBodySize, snsPayloadAttrSize, m.snsPayloadSize, maxSnsPublishPayload)
-	}
-
-	return m, nil
+	return m, snsPayloadBodySize, snsPayloadAttrSize
 }

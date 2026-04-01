@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/segmentio/ksuid"
 )
 
 // go test -count 1 -run '^TestPool$' ./...
@@ -155,29 +156,36 @@ func TestPoolConcurrency(t *testing.T) {
 
 // go test -count 1 -run '^TestMessagePayload$' ./...
 func TestMessagePayload(t *testing.T) {
-	if _, err := createMessage(0); err != nil {
+	if _, err := createTestMessage(0); err != nil {
 		t.Errorf("payload=%d: error: %v", 0, err)
 	}
-	if _, err := createMessage(1); err != nil {
+	if _, err := createTestMessage(1); err != nil {
 		t.Errorf("payload=%d: error: %v", 1, err)
 	}
-	if _, err := createMessage(maxSnsPublishPayload - 1); err != nil {
+	if _, err := createTestMessage(maxSnsPublishPayload - 1); err != nil {
 		t.Errorf("payload=%d: error: %v", maxSnsPublishPayload-1, err)
 	}
-	if _, err := createMessage(maxSnsPublishPayload); err != nil {
+	if _, err := createTestMessage(maxSnsPublishPayload); err != nil {
 		t.Errorf("payload=%d: error: %v", maxSnsPublishPayload, err)
 	}
-	if _, err := createMessage(maxSnsPublishPayload + 1); err == nil {
+	if _, err := createTestMessage(maxSnsPublishPayload + 1); err == nil {
 		t.Errorf("payload=%d: unexpected success", maxSnsPublishPayload+1)
 	}
 }
 
-func createMessage(payloadSize int) (message, error) {
+func getRandomID() string {
+	id, _ := ksuid.NewRandom()
+	return id.String()
+}
+
+func createTestMessage(payloadSize int) (message, error) {
+
+	id := getRandomID()
 
 	payload := strings.Repeat("a", payloadSize)
 
 	sqsMessage := &sqstypes.Message{
-		MessageId: aws.String(payload),
+		MessageId: aws.String(id),
 		Body:      aws.String(payload),
 	}
 
@@ -198,7 +206,7 @@ func TestPoolDeleteBehavior(t *testing.T) {
 
 	// 2. Create "Large" messages (e.g., 100 bytes each)
 	// In a limited pool of '10', these would flush 1-by-1.
-	m, _ := createMessage(100)
+	m, _ := createTestMessage(100)
 
 	for range 5 {
 		p.add(m)
