@@ -107,7 +107,13 @@ type publisherReal struct {
 func buildEntriesFromMessages(msg []message) []snstypes.PublishBatchRequestEntry {
 	entries := make([]snstypes.PublishBatchRequestEntry, len(msg))
 	for i, m := range msg {
+
 		entry := *m.snsBatchEntry
+
+		// Combine messageId with index to get traceability and stronger uniqueness.
+		entryID := getBatchEntryID(aws.ToString(m.sqsMessage.MessageId), i)
+		entry.Id = aws.String(entryID)
+
 		entries[i] = entry
 	}
 	return entries
