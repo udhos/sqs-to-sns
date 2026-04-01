@@ -6,20 +6,32 @@ import (
 
 // poolV2 is suited for SNS publish in batch, since it
 // accounts for SNS payload byte limit.
+//
+// perMessagePadding is a fixed overhead we add to each message's snsPayloadSize
+// to account for SNS publish overhead. This allows to reserve per-message room
+// for 338-byte attribute _datadog injected by Orchestrion. See this issue:
+//
+// https://github.com/DataDog/orchestrion/issues/814
 type poolV2 struct {
 	snsPublishPayloadLimit int
+	perMessagePadding      int
 	buf                    []message
 	mu                     sync.Mutex
 }
 
-func newPoolV2(snsPublishPayloadLimit int) *poolV2 {
+func newPoolV2(snsPublishPayloadLimit, perMessagePadding int) *poolV2 {
 
 	if snsPublishPayloadLimit < 1 {
 		panic("poolV2 does NOT support unlimited payload (but poolV1 does)")
 	}
 
+	if perMessagePadding < 0 {
+		panic("perMessagePadding must be non-negative")
+	}
+
 	return &poolV2{
 		snsPublishPayloadLimit: snsPublishPayloadLimit,
+		perMessagePadding:      perMessagePadding,
 		buf:                    make([]message, 0, 100),
 	}
 }
@@ -52,8 +64,10 @@ func (p *poolV2) findIndices() ([]int, int) {
 
 		m := p.buf[i]
 
-		if payloadSum+m.snsPayloadSize <= p.snsPublishPayloadLimit {
-			payloadSum += m.snsPayloadSize
+		messageSnsPayloadSize := m.snsPayloadSize + p.perMessagePadding
+
+		if payloadSum+messageSnsPayloadSize <= p.snsPublishPayloadLimit {
+			payloadSum += messageSnsPayloadSize
 			indices = append(indices, i)
 
 			// Optimization: If we are at limit, stop scanning.

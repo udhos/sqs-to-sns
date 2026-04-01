@@ -122,6 +122,7 @@ WATERMARK_LOW_DELETE    .33
 WATERMARK_HIGH_DELETE   .66
 HEALTH_ADDR             :8080
 HEALTH_PATH             /health
+PER_MESSAGE_PADDING     500        # Orchestrion _datadog attribute adds 338-byte overhead. We add some extra room to be safe.
 DOGSTATSD_ENABLE        false
 DOGSTATSD_INTERVAL      20s
 DOGSTATSD_NAMESPACE     sqstosns
@@ -166,7 +167,8 @@ The env var `QUEUES` points to yaml file declaring a list of queue-to-topic mapp
 v2 uses a high-performance local aggregator. Every goroutine (root and sibling) records metrics into atomic buckets. A background harvester snapshots these buckets every 20s to export min, max, and avg values, ensuring even micro-bursts are captured.
 
 Env var               | Default
--- | --
+--                    | --
+PER_MESSAGE_PADDING   | 500        # Orchestrion _datadog attribute adds 338-byte overhead. We add some extra room to be safe.
 DOGSTATSD_ENABLE      | "false"
 DOGSTATSD_INTERVAL    | 20s
 DOGSTATSD_NAMESPACE   | ""

@@ -93,6 +93,7 @@ configMapProperties:
   #
   # dogstatsd metrics
   #
+  PER_MESSAGE_PADDING: "500" # Orchestrion _datadog attribute adds 338-byte overhead. We add some extra room to be safe.
   DOGSTATSD_ENABLE: "false"
   DOGSTATSD_INTERVAL: 20s
   DOGSTATSD_NAMESPACE: sqstosns

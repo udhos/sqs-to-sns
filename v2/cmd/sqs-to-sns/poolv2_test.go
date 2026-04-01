@@ -10,7 +10,7 @@ import (
 // by a large message at the head.
 func TestPoolV2BinPacking(t *testing.T) {
 	// Limit of 10 bytes for easy math
-	p := newPoolV2(10)
+	p := newPoolV2(10, 0)
 
 	// Input: [4, 4, 5, 1, 1]
 	m4, _ := createTestMessage(4)
@@ -58,7 +58,7 @@ func TestPoolV2BinPacking(t *testing.T) {
 // TestPoolV2SurvivorOrder ensures that when we pluck messages from the middle,
 // the relative order of the remaining messages is preserved.
 func TestPoolV2SurvivorOrder(t *testing.T) {
-	p := newPoolV2(10)
+	p := newPoolV2(10, 0)
 
 	// We'll add 5 messages. We'll extract #1 and #3.
 	m2, _ := createTestMessage(2) // idx 0
@@ -91,7 +91,7 @@ func TestPoolV2SurvivorOrder(t *testing.T) {
 
 // TestPoolV2MaxItems ensures that even if bytes allow more, we never exceed 10 items.
 func TestPoolV2MaxItems(t *testing.T) {
-	p := newPoolV2(1000) // Huge byte limit
+	p := newPoolV2(1000, 0) // Huge byte limit
 
 	// Add 15 tiny messages
 	m1, _ := createTestMessage(1)
@@ -120,7 +120,7 @@ func TestPoolContract(t *testing.T) {
 		p    pool
 	}{
 		{"PoolV1", newPoolV1()}, // Standard 100-byte limit
-		{"PoolV2", newPoolV2(100)},
+		{"PoolV2", newPoolV2(100, 0)},
 	}
 
 	for _, tt := range tests {
@@ -165,7 +165,7 @@ func TestPoolContract(t *testing.T) {
 
 func TestByteLimitContractV2(t *testing.T) {
 	limit := 10
-	p2 := newPoolV2(limit)
+	p2 := newPoolV2(limit, 0)
 
 	m6, _ := createTestMessage(6)
 	m5, _ := createTestMessage(5)
@@ -193,7 +193,7 @@ func TestByteLimitContractV2(t *testing.T) {
 
 // go test -count 1 -run '^TestPoolV2$' ./...
 func TestPoolV2(t *testing.T) {
-	p := newPoolV2(maxSnsPublishPayload)
+	p := newPoolV2(maxSnsPublishPayload, 0)
 
 	{
 		m := p.getAvailable()
@@ -272,7 +272,7 @@ func TestPoolV2(t *testing.T) {
 
 // go test -race -run '^TestPoolConcurrencyV2$' ./...
 func TestPoolConcurrencyV2(t *testing.T) {
-	p := newPoolV2(maxSnsPublishPayload)
+	p := newPoolV2(maxSnsPublishPayload, 0)
 	var wg sync.WaitGroup
 
 	const (
@@ -346,7 +346,7 @@ func TestPoolPayloadSizeV2(t *testing.T) {
 		t.Errorf("message: %v", errMsg)
 	}
 
-	p := newPoolV2(10)
+	p := newPoolV2(10, 0)
 
 	{
 		avail := p.getAvailable()
@@ -383,7 +383,7 @@ func TestPoolPayloadSizeV2(t *testing.T) {
 	// check full batch api
 	//
 
-	p = newPoolV2(10) // reset pool
+	p = newPoolV2(10, 0) // reset pool
 
 	{
 		_, found := p.getFullBatch()
@@ -422,7 +422,7 @@ func TestPoolPayloadSizeV2(t *testing.T) {
 	// test exact byte limit
 	//
 
-	p = newPoolV2(10)
+	p = newPoolV2(10, 0)
 	m5, errMsg := createTestMessage(5)
 	if errMsg != nil {
 		t.Errorf("message: %v", errMsg)
@@ -489,7 +489,7 @@ func TestFullBatchLimitV2(t *testing.T) {
 		t.Errorf("message error: %v", err)
 	}
 
-	p := newPoolV2(3)
+	p := newPoolV2(3, 0)
 
 	{
 		_, found := p.getFullBatch()
@@ -534,7 +534,7 @@ func TestFullBatchLimitV2(t *testing.T) {
 }
 
 func TestV2LargeMessageFlushesImmediately(t *testing.T) {
-	p := newPoolV2(10)
+	p := newPoolV2(10, 0)
 	mLarge, _ := createTestMessage(9)
 	mSmall, _ := createTestMessage(2)
 

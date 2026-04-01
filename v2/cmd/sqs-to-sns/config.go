@@ -9,6 +9,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// config holds all configuration for the application,
+// including global settings and per-queue settings.
+//
+// perMessagePadding is a fixed overhead we add to each message's snsPayloadSize
+// to account for SNS publish overhead. This allows to reserve per-message room
+// for 338-byte attribute _datadog injected by Orchestrion. See this issue:
+//
+// https://github.com/DataDog/orchestrion/issues/814
 type config struct {
 	queueListFile        string
 	logMessageBody       bool
@@ -28,6 +36,7 @@ type config struct {
 	dogstatsdInterval    time.Duration
 	dogstatsdNamespace   string
 	dogstatsdSampleRate  float64
+	perMessagePadding    int
 }
 
 type queueConfig struct {
@@ -71,6 +80,7 @@ func newConfig(env *envconfig.Env) config {
 		dogstatsdInterval:    env.Duration("DOGSTATSD_INTERVAL", 20*time.Second),
 		dogstatsdNamespace:   env.String("DOGSTATSD_NAMESPACE", ""),
 		dogstatsdSampleRate:  env.Float64("DOGSTATSD_SAMPLE_RATE", 1.0),
+		perMessagePadding:    env.Int("PER_MESSAGE_PADDING", 500), // Orchestrion _datadog attribute adds 338-byte overhead. We add some extra room to be safe.
 	}
 
 	cfg.queues = loadQueueConf(cfg)
