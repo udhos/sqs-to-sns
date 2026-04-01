@@ -1,11 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/udhos/sqs-to-sns/v2/snsutils"
 )
 
 func newApp(cfg config,
@@ -117,10 +120,12 @@ func (app *application) startReader(q *queue, root bool) {
 			if app.cfg.logMessageBody {
 				q.logger.Debug(me,
 					"message_id", aws.ToString(m.sqsMessage.MessageId),
+					"message_size", m.snsPayloadSize,
 					"message_body", aws.ToString(m.sqsMessage.Body))
 			} else {
 				q.logger.Debug(me,
-					"message_id", aws.ToString(m.sqsMessage.MessageId))
+					"message_id", aws.ToString(m.sqsMessage.MessageId),
+					"message_size", m.snsPayloadSize)
 			}
 
 			q.publishCh <- m
@@ -260,6 +265,19 @@ func channelLoad(ch chan message) float32 {
 	return float32(len(ch)) / float32(cap(ch))
 }
 
+// GetBatchSizing returns a string representation of the batch sizing for a slice of messages.
+func GetBatchSizing(msg []message) string {
+	var sum int
+	var items []string
+	for i, m := range msg {
+		body, attr, total := snsutils.GetSNSPayloadSize(*m.snsBatchEntry)
+		sum += total
+		items = append(items, fmt.Sprintf("%d/%d:body=%d/attr=%d/total_now=%d/total_cached=%d",
+			i+1, len(msg), body, attr, total, m.snsPayloadSize))
+	}
+	return fmt.Sprintf("items=%d grand_total=%d: ", len(msg), sum) + strings.Join(items, " ")
+}
+
 func (app *application) batchPublish(q *queue, msg []message) {
 
 	const me = "batchPublish"
@@ -273,6 +291,7 @@ func (app *application) batchPublish(q *queue, msg []message) {
 		q.stats.publishErrors.Add(1) // Track the failure
 		q.logger.Error(me,
 			"error", errPub,
+			"batch_size", GetBatchSizing(msg),
 			"sleeping", q.queueCfg.PublishErrorCooldown)
 		time.Sleep(q.queueCfg.PublishErrorCooldown)
 		return
@@ -295,11 +314,13 @@ func (app *application) batchPublish(q *queue, msg []message) {
 			q.logger.Debug(me,
 				"latency_ms", latencyMs,
 				"message_id", aws.ToString(m.sqsMessage.MessageId),
+				"message_size", m.snsPayloadSize,
 				"message_body", aws.ToString(m.sqsMessage.Body))
 		} else {
 			q.logger.Debug(me,
 				"latency_ms", latencyMs,
-				"message_id", aws.ToString(m.sqsMessage.MessageId))
+				"message_id", aws.ToString(m.sqsMessage.MessageId),
+				"message_size", m.snsPayloadSize)
 		}
 
 		q.deleteCh <- m
@@ -336,10 +357,12 @@ func (app *application) batchDelete(q *queue, msg []message) {
 		if app.cfg.logMessageBody {
 			q.logger.Debug(me,
 				"message_id", aws.ToString(m.sqsMessage.MessageId),
+				"message_size", m.snsPayloadSize,
 				"message_body", aws.ToString(m.sqsMessage.Body))
 		} else {
 			q.logger.Debug(me,
-				"message_id", aws.ToString(m.sqsMessage.MessageId))
+				"message_id", aws.ToString(m.sqsMessage.MessageId),
+				"message_size", m.snsPayloadSize)
 		}
 	}
 }

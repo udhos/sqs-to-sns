@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -139,4 +140,25 @@ func (r *receiverMock) stop(_ *queue) {
 	r.mu.Lock()
 	r.stopped = true
 	r.mu.Unlock()
+}
+
+// ExampleGetBatchSizing demonstrates how the batch sizing string is formatted
+// for a slice of SNS messages.
+// go test -count 1 -run '^ExampleGetBatchSizing$' ./...
+func ExampleGetBatchSizing() {
+	// 1. Create a slice of messages using your helper
+	// Message 1: 100 bytes
+	// Message 2: 200 bytes
+	msg1, _ := createMessage(100)
+	msg2, _ := createMessage(200)
+	msgs := []message{msg1, msg2}
+
+	// 2. Call the function
+	result := GetBatchSizing(msgs)
+
+	// 3. Print the result for the Go test runner to verify
+	fmt.Println(result)
+
+	// Output:
+	// items=2 grand_total=300: 1/2:body=100/attr=0/total_now=100/total_cached=100 2/2:body=200/attr=0/total_now=200/total_cached=200
 }

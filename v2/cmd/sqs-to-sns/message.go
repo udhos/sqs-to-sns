@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	snstypes "github.com/aws/aws-sdk-go-v2/service/sns/types"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/udhos/sqs-to-sns/v2/snsutils"
 )
 
 const maxSnsPublishPayload = 262144
@@ -49,42 +50,19 @@ func newMessage(sqsMessage *sqstypes.Message, receivedAt time.Time,
 		}
 	}
 
+	snsPayloadBodySize, snsPayloadAttrSize, snsPayloadTotalSize := snsutils.GetSNSPayloadSize(snsEntry)
+
 	m := message{
 		sqsMessage:     sqsMessage,
 		receivedAt:     receivedAt,
 		snsBatchEntry:  &snsEntry,
-		snsPayloadSize: getSNSPayloadSize(len(aws.ToString(snsEntry.Message)), snsEntry.MessageAttributes),
+		snsPayloadSize: snsPayloadTotalSize,
 	}
 
 	if m.snsPayloadSize > maxSnsPublishPayload {
-		return message{}, fmt.Errorf("invalid payload size for SNS: %d > limit=%d",
-			m.snsPayloadSize, maxSnsPublishPayload)
+		return message{}, fmt.Errorf("invalid payload size for SNS (body=%d, attributes=%d): total=%d > limit=%d",
+			snsPayloadBodySize, snsPayloadAttrSize, m.snsPayloadSize, maxSnsPublishPayload)
 	}
 
 	return m, nil
-}
-
-func getSNSPayloadSize(messageSize int, attrs map[string]snstypes.MessageAttributeValue) int {
-
-	for name, attr := range attrs {
-		// 1. Name of the attribute
-		messageSize += len(name)
-
-		// 2. DataType (e.g., "String", "Number", "Binary")
-		if attr.DataType != nil {
-			messageSize += len(aws.ToString(attr.DataType))
-		}
-
-		// 3. String Value
-		if attr.StringValue != nil {
-			messageSize += len(aws.ToString(attr.StringValue))
-		}
-
-		// 4. Binary Value
-		if len(attr.BinaryValue) > 0 {
-			messageSize += len(attr.BinaryValue)
-		}
-	}
-
-	return messageSize
 }

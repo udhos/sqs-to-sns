@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -12,9 +13,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
-	"github.com/aws/aws-sdk-go-v2/service/sns/types"
-
+	snstypes "github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/udhos/sqs-to-sns/v2/internal/snsclient"
+	"github.com/udhos/sqs-to-sns/v2/snsutils"
 )
 
 const maxPublishPayload = 262144
@@ -25,17 +26,19 @@ func main() {
 	var endpointURL string
 	var payload int
 	var batch int
+	var attributes bool
 
 	flag.StringVar(&topicArn, "topic", "", "topic ARN")
 	flag.StringVar(&roleArn, "role", "", "role ARN")
 	flag.StringVar(&endpointURL, "endpoint", "", "endpoint URL")
-	flag.IntVar(&payload, "payload", 26198, "payload size")
+	flag.IntVar(&payload, "payload", 26198, fmt.Sprintf("payload size (max %d)", maxPublishPayload))
 	flag.IntVar(&batch, "batch", 10, "batch size")
+	flag.BoolVar(&attributes, "attributes", false, "include message attributes")
 	flag.Parse()
 
 	me := filepath.Base(os.Args[0])
 
-	var entries []types.PublishBatchRequestEntry
+	var entries []snstypes.PublishBatchRequestEntry
 
 	message := strings.Repeat("a", payload)
 
@@ -46,30 +49,33 @@ func main() {
 		value      = "value1"
 	)
 
-	attr := map[string]types.MessageAttributeValue{
-		"key1": {
-			DataType:    aws.String(stringType),
-			StringValue: aws.String(value),
-		},
+	entry := snstypes.PublishBatchRequestEntry{
+		Message: aws.String(message),
 	}
 
-	messageFullPayloadSize := getSNSPayloadSize(message, attr)
+	if attributes {
+		attr := map[string]snstypes.MessageAttributeValue{
+			"key1": {
+				DataType:    aws.String(stringType),
+				StringValue: aws.String(value),
+			},
+		}
+		entry.MessageAttributes = attr
+	}
+
+	messageBodyPayloadSize, messageAttrPayloadSize, messageFullPayloadSize := snsutils.GetSNSPayloadSize(entry)
 
 	slog.Info("message sizing",
 		"batch", batch,
 		"payload", payload,
-		"attributes", messageFullPayloadSize-payload,
+		"attributes", messageAttrPayloadSize,
 		"full_payload", messageFullPayloadSize,
 		"batch_total", batch*messageFullPayloadSize,
 		"limit", maxPublishPayload)
 
 	for i := range batch {
-		id := strconv.Itoa(i)
-		entries = append(entries, types.PublishBatchRequestEntry{
-			Id:                aws.String(id),
-			Message:           aws.String(message),
-			MessageAttributes: attr,
-		})
+		entry.Id = aws.String(strconv.Itoa(i))
+		entries = append(entries, entry)
 	}
 
 	input := &sns.PublishBatchInput{
@@ -79,7 +85,11 @@ func main() {
 
 	result, err := client.PublishBatch(context.TODO(), input)
 	if err != nil {
-		slog.Error("failed to publish batch", "error", err)
+		slog.Error("failed to publish batch",
+			"bodySize", messageBodyPayloadSize,
+			"attributesSize", messageAttrPayloadSize,
+			"fullSize", messageFullPayloadSize,
+			"error", err)
 		return
 	}
 
@@ -95,30 +105,4 @@ func main() {
 			"code", aws.ToString(f.Code),
 			"SenderFault", f.SenderFault)
 	}
-}
-
-func getSNSPayloadSize(body string, attrs map[string]types.MessageAttributeValue) int {
-	size := len(body)
-
-	for name, attr := range attrs {
-		// 1. Name of the attribute
-		size += len(name)
-
-		// 2. DataType (e.g., "String", "Number", "Binary")
-		if attr.DataType != nil {
-			size += len(aws.ToString(attr.DataType))
-		}
-
-		// 3. String Value
-		if attr.StringValue != nil {
-			size += len(aws.ToString(attr.StringValue))
-		}
-
-		// 4. Binary Value
-		if len(attr.BinaryValue) > 0 {
-			size += len(attr.BinaryValue)
-		}
-	}
-
-	return size
 }
