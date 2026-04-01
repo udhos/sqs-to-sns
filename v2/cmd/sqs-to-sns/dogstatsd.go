@@ -44,6 +44,7 @@ func exportDogstatsd(namespace string, dogstatsdInterval time.Duration,
 				c.Count("deletes", int64(snap.deletes), tags, sampleRate)
 				c.Count("partial_publishes", int64(snap.partialPublishes), tags, sampleRate)
 				c.Count("partial_deletes", int64(snap.partialDeletes), tags, sampleRate)
+				c.Count("dropped_messages", int64(snap.droppedMessages), tags, sampleRate)
 				c.Count("received_messages", int64(snap.receivedMessages), tags, sampleRate)
 				c.Count("published_messages", int64(snap.publishedMessages), tags, sampleRate)
 				c.Count("deleted_messages", int64(snap.deletedMessages), tags, sampleRate)

@@ -192,6 +192,7 @@ publishes              | Count               | Number of SNS PublishBatch API ca
 deletes                | Count               | Number of SQS DeleteMessage API calls made.
 partial_publishes      | Count               | Number of SNS PublishBatch calls with partial success.
 partial_deletes        | Count               | Number of SQS DeleteMessage calls with partial success.
+dropped_messages       | Count               | Number of messages dropped due to payload size issues.
 received_messages      | Count               | Number of messages received from SQS.
 published_messages     | Count               | Number of messages successfully published to SNS.
 deleted_messages       | Count               | Number of messages successfully deleted from SQS.

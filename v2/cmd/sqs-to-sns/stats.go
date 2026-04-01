@@ -18,6 +18,7 @@ type stats struct {
 	partialPublishes atomic.Uint64 // count
 	partialDeletes   atomic.Uint64 // count
 
+	droppedMessages   atomic.Uint64 // count
 	receivedMessages  atomic.Uint64 // count
 	publishedMessages atomic.Uint64 // count
 	deletedMessages   atomic.Uint64 // count
@@ -46,6 +47,7 @@ type statsSnapshot struct {
 	partialPublishes uint64 // count
 	partialDeletes   uint64 // count
 
+	droppedMessages   uint64 // count
 	receivedMessages  uint64 // count
 	publishedMessages uint64 // count
 	deletedMessages   uint64 // count
@@ -87,6 +89,7 @@ func (s *stats) harvest() statsSnapshot {
 		partialPublishes: s.partialPublishes.Swap(0),
 		partialDeletes:   s.partialDeletes.Swap(0),
 
+		droppedMessages:   s.droppedMessages.Swap(0),
 		receivedMessages:  s.receivedMessages.Swap(0),
 		publishedMessages: s.publishedMessages.Swap(0),
 		deletedMessages:   s.deletedMessages.Swap(0),

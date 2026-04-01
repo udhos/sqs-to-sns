@@ -265,7 +265,9 @@ func (r *receiverReal) receive(q *queue) ([]message, bool, error) {
 			r.perMessagePadding)
 		if errMsg != nil {
 			q.logger.Error(me,
+				"message_id", aws.ToString(respMsg.MessageId),
 				"new_message_error", errMsg)
+			q.stats.droppedMessages.Add(1)
 			continue
 		}
 

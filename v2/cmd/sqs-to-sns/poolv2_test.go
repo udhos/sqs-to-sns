@@ -634,18 +634,38 @@ func TestPoolV2PerMessagePadding(t *testing.T) {
 		// Limit 10, Padding 2
 		p := newPoolV2(10, 2)
 
-		m1, _ := createTestMessage(1) // eff: 3
-		m5, _ := createTestMessage(5) // eff: 7
+		// Setup messages:
+		// m1: eff size 1 + 2 = 3
+		// m5: eff size 5 + 2 = 7
+		m1, _ := createTestMessage(1)
+		m5, _ := createTestMessage(5)
 
-		p.add(m1) // sum: 3
-		p.add(m5) // 3 + 7 = 10 (Fits!)
-		p.add(m1) // 10 + 3 = 13 (Too big, should be skipped)
-		p.add(m1) // wait, if we skip m5, can we fit m1?
+		// Add them in order: [m1, m5, m1]
+		p.add(m1) // Total eff: 3
+		p.add(m5) // Total eff: 3 + 7 = 10 (Matches limit exactly)
+		p.add(m1) // Total eff: 10 + 3 = 13 (Would exceed limit)
 
-		// Let's try a clearer sequence:
-		// [m1 (3), m5 (7), m1 (3)]
-		// Batch 1 should be [m1, m5] (Total 10)
-		// Batch 2 should be [m1]
+		// 1. First call: Should take m1 and m5 (Indices 0 and 1)
+		batch1, found1 := p.getFullBatch()
+		if !found1 {
+			t.Fatal("Batch 1 (m1 + m5) should be found (3 + 7 = 10)")
+		}
+		if len(batch1) != 2 {
+			t.Errorf("Expected 2 messages in batch 1, got %d", len(batch1))
+		}
+
+		// 2. Second call: The second m1 is still there.
+		// It shouldn't be "full" yet because 1+2=3 < 10.
+		_, found2 := p.getFullBatch()
+		if found2 {
+			t.Error("Batch 2 should NOT be full with only one 1-byte message remaining")
+		}
+
+		// 3. Check survivors
+		survivors := p.getAvailable()
+		if len(survivors) != 1 || survivors[0].snsPayloadSize != 1 {
+			t.Errorf("Expected one 1-byte survivor, got %v", survivors)
+		}
 	})
 }
 
