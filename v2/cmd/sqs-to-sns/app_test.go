@@ -160,5 +160,5 @@ func ExampleGetBatchSizing() {
 	fmt.Println(result)
 
 	// Output:
-	// items=2 grand_total=300: 1/2:body=100/attr=0/total_now=100/total_cached=100 2/2:body=200/attr=0/total_now=200/total_cached=200
+	// items=2 grand_total=300: 1/2:body=100/attr=0/total_now=100/total_cached=100/attr_debug=[] 2/2:body=200/attr=0/total_now=200/total_cached=200/attr_debug=[]
 }

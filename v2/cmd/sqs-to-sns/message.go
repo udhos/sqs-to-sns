@@ -64,7 +64,9 @@ func newMessageUnsafe(sqsMessage *sqstypes.Message, receivedAt time.Time,
 		}
 	}
 
-	snsPayloadBodySize, snsPayloadAttrSize, snsPayloadTotalSize := snsutils.GetSNSPayloadSize(snsEntry)
+	const debug = false
+
+	snsPayloadBodySize, snsPayloadAttrSize, snsPayloadTotalSize, _ := snsutils.GetSNSPayloadSize(snsEntry, debug)
 
 	m := message{
 		sqsMessage:     sqsMessage,

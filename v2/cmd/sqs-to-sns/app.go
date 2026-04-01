@@ -269,11 +269,12 @@ func channelLoad(ch chan message) float32 {
 func GetBatchSizing(msg []message) string {
 	var sum int
 	var items []string
+	const debug = true
 	for i, m := range msg {
-		body, attr, total := snsutils.GetSNSPayloadSize(*m.snsBatchEntry)
+		body, attr, total, debugInfo := snsutils.GetSNSPayloadSize(*m.snsBatchEntry, debug)
 		sum += total
-		items = append(items, fmt.Sprintf("%d/%d:body=%d/attr=%d/total_now=%d/total_cached=%d",
-			i+1, len(msg), body, attr, total, m.snsPayloadSize))
+		items = append(items, fmt.Sprintf("%d/%d:body=%d/attr=%d/total_now=%d/total_cached=%d/attr_debug=[%s]",
+			i+1, len(msg), body, attr, total, m.snsPayloadSize, debugInfo))
 	}
 	return fmt.Sprintf("items=%d grand_total=%d: ", len(msg), sum) + strings.Join(items, " ")
 }

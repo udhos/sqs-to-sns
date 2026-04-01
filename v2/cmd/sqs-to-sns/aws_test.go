@@ -94,10 +94,13 @@ func TestSNSBatchBoundary(t *testing.T) {
 
 			m, _, _ := newMessageUnsafe(sqsMessage, now, copyAttributes, copyMessageGroupID)
 
-			_, _, total := snsutils.GetSNSPayloadSize(*m.snsBatchEntry)
+			const debug = true
+
+			_, _, total, debugInfo := snsutils.GetSNSPayloadSize(*m.snsBatchEntry, debug)
 
 			if m.snsPayloadSize != payloadSize {
-				t.Fatalf("Test 2 Failed: Expected message size to be %d bytes, got %d bytes", payloadSize, total)
+				t.Fatalf("Test 2 Failed: Expected message size to be %d bytes, got %d bytes (%s)",
+					payloadSize, total, debugInfo)
 			}
 
 			msgs[0] = m
@@ -117,4 +120,32 @@ func TestSNSBatchBoundary(t *testing.T) {
 		t.Logf("Batch sizing: %s", sizing)
 		t.Logf("Received expected error: %v", err)
 	})
+}
+
+// go test -count 1 -run '^TestBuildEntriesFromMessages$' ./...
+func TestBuildEntriesFromMessages(t *testing.T) {
+
+	var msgs []message
+
+	m, err := createTestMessage(maxSnsPublishPayload)
+	if err != nil {
+		t.Fatalf("Failed to create test message: %v", err)
+	}
+	msgs = append(msgs, m)
+
+	entries := buildEntriesFromMessages(msgs)
+	if len(entries) != len(msgs) {
+		t.Fatalf("Expected %d entries, got %d", len(msgs), len(entries))
+	}
+
+	sizing := GetBatchSizing(msgs)
+
+	t.Logf("Batch sizing: %s", sizing)
+
+	const debug = true
+
+	_, _, total, debugInfo := snsutils.GetSNSPayloadSize(*msgs[0].snsBatchEntry, debug)
+	if total != maxSnsPublishPayload {
+		t.Errorf("bad sizing: %s (%s)", sizing, debugInfo)
+	}
 }

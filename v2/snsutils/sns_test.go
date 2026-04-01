@@ -112,16 +112,20 @@ func TestGetSNSPayloadSize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBody, gotAttributes, gotTotal := GetSNSPayloadSize(tt.entry)
+			const debug = true
+			gotBody, gotAttributes, gotTotal, debugInfo := GetSNSPayloadSize(tt.entry, debug)
 
 			if gotBody != tt.wantBody {
-				t.Errorf("GetSNSPayloadSize() gotBody = %v, want %v", gotBody, tt.wantBody)
+				t.Errorf("GetSNSPayloadSize() gotBody = %v, want %v, debugInfo: %s",
+					gotBody, tt.wantBody, debugInfo)
 			}
 			if gotAttributes != tt.wantAttributes {
-				t.Errorf("GetSNSPayloadSize() gotAttributes = %v, want %v", gotAttributes, tt.wantAttributes)
+				t.Errorf("GetSNSPayloadSize() gotAttributes = %v, want %v, debugInfo: %s",
+					gotAttributes, tt.wantAttributes, debugInfo)
 			}
 			if gotTotal != tt.wantTotal {
-				t.Errorf("GetSNSPayloadSize() gotTotal = %v, want %v", gotTotal, tt.wantTotal)
+				t.Errorf("GetSNSPayloadSize() gotTotal = %v, want %v, debugInfo: %s",
+					gotTotal, tt.wantTotal, debugInfo)
 			}
 		})
 	}

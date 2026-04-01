@@ -104,6 +104,15 @@ type publisherReal struct {
 	snsClient     *sns.Client
 }
 
+func buildEntriesFromMessages(msg []message) []snstypes.PublishBatchRequestEntry {
+	entries := make([]snstypes.PublishBatchRequestEntry, len(msg))
+	for i, m := range msg {
+		entry := *m.snsBatchEntry
+		entries[i] = entry
+	}
+	return entries
+}
+
 func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
 
 	const me = "publisherReal.publish"
@@ -112,15 +121,7 @@ func (p *publisherReal) publish(q *queue, msg []message) ([]message, error) {
 		return nil, errors.New("publisherReal.publish: unexpected empty message list")
 	}
 
-	entries := make([]snstypes.PublishBatchRequestEntry, len(msg))
-	for i, m := range msg {
-		// Combine messageId with index to get traceability and stronger uniqueness.
-		entryID := getBatchEntryID(aws.ToString(m.sqsMessage.MessageId), i)
-
-		entry := *m.snsBatchEntry
-		entry.Id = aws.String(entryID)
-		entries[i] = entry
-	}
+	entries := buildEntriesFromMessages(msg)
 
 	input := &sns.PublishBatchInput{
 		TopicArn:                   aws.String(q.queueCfg.TopicArn),

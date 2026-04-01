@@ -63,7 +63,9 @@ func main() {
 		entry.MessageAttributes = attr
 	}
 
-	messageBodyPayloadSize, messageAttrPayloadSize, messageFullPayloadSize := snsutils.GetSNSPayloadSize(entry)
+	const debug = true
+
+	messageBodyPayloadSize, messageAttrPayloadSize, messageFullPayloadSize, debugInfo := snsutils.GetSNSPayloadSize(entry, debug)
 
 	slog.Info("message sizing",
 		"batch", batch,
@@ -71,7 +73,8 @@ func main() {
 		"attributes", messageAttrPayloadSize,
 		"full_payload", messageFullPayloadSize,
 		"batch_total", batch*messageFullPayloadSize,
-		"limit", maxPublishPayload)
+		"limit", maxPublishPayload,
+		"payload_debug_info", debugInfo)
 
 	for i := range batch {
 		entry.Id = aws.String(strconv.Itoa(i))
