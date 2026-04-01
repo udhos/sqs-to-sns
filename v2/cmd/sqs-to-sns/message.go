@@ -20,14 +20,16 @@ type message struct {
 }
 
 func newMessage(sqsMessage *sqstypes.Message, receivedAt time.Time,
-	copyAttributes, copyMessageGroupID bool) (message, error) {
+	copyAttributes, copyMessageGroupID bool, perMessagePadding int) (message, error) {
 
 	m, snsPayloadBodySize, snsPayloadAttrSize := newMessageUnsafe(sqsMessage,
 		receivedAt, copyAttributes, copyMessageGroupID)
 
-	if m.snsPayloadSize > maxSnsPublishPayload {
-		return message{}, fmt.Errorf("invalid payload size for SNS (body=%d, attributes=%d): total=%d > limit=%d",
-			snsPayloadBodySize, snsPayloadAttrSize, m.snsPayloadSize, maxSnsPublishPayload)
+	messagePayloadSize := m.snsPayloadSize + perMessagePadding
+
+	if messagePayloadSize > maxSnsPublishPayload {
+		return message{}, fmt.Errorf("invalid payload size for SNS (body=%d attributes=%d padding=%d): total=%d > limit=%d",
+			snsPayloadBodySize, snsPayloadAttrSize, perMessagePadding, messagePayloadSize, maxSnsPublishPayload)
 	}
 
 	return m, nil

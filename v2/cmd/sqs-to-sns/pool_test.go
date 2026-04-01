@@ -196,7 +196,10 @@ func createTestMessage(payloadSize int) (message, error) {
 
 	now := time.Now()
 
-	return newMessage(sqsMessage, now, copyAttributes, copyMessageGroupID)
+	const perMessagePadding = 0
+
+	return newMessage(sqsMessage, now, copyAttributes, copyMessageGroupID,
+		perMessagePadding)
 }
 
 // go test -run '^TestPoolDeleteBehavior$' ./...

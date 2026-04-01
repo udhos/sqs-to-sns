@@ -90,6 +90,11 @@ func (p *poolV2) getFullBatch() ([]message, bool) {
 
 	indices, payloadSum := p.findIndices()
 
+	// 0. No messages fit into the batch.
+	if len(indices) == 0 {
+		return nil, false
+	}
+
 	// 1. Full by Count: We hit 10 items.
 	if len(indices) >= maxBatchItems {
 		return p.extractUnsafe(indices), true

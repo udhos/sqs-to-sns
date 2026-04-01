@@ -192,22 +192,24 @@ func getBatchEntryID(messageID string, entryIndex int) string {
 //
 
 type receiverReal struct {
-	awsAPITimeout time.Duration
-	sqsClient     *sqs.Client
-	ctx           context.Context    // The "life" of the receiver
-	cancel        context.CancelFunc // The "trigger" to kill it
-	stopped       bool
-	mu            sync.Mutex
+	awsAPITimeout     time.Duration
+	sqsClient         *sqs.Client
+	perMessagePadding int
+	ctx               context.Context    // The "life" of the receiver
+	cancel            context.CancelFunc // The "trigger" to kill it
+	stopped           bool
+	mu                sync.Mutex
 }
 
 func newReceiverReal(sqsClient *sqs.Client,
-	awsAPITimeout time.Duration) *receiverReal {
+	awsAPITimeout time.Duration, perMessagePadding int) *receiverReal {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &receiverReal{
-		awsAPITimeout: awsAPITimeout,
-		sqsClient:     sqsClient,
-		ctx:           ctx,
-		cancel:        cancel,
+		awsAPITimeout:     awsAPITimeout,
+		sqsClient:         sqsClient,
+		perMessagePadding: perMessagePadding,
+		ctx:               ctx,
+		cancel:            cancel,
 	}
 }
 
@@ -259,7 +261,8 @@ func (r *receiverReal) receive(q *queue) ([]message, bool, error) {
 
 		m, errMsg := newMessage(&respMsg, now,
 			aws.ToBool(q.queueCfg.CopyAttributes),
-			aws.ToBool(q.queueCfg.CopyMesssageGroupID))
+			aws.ToBool(q.queueCfg.CopyMesssageGroupID),
+			r.perMessagePadding)
 		if errMsg != nil {
 			q.logger.Error(me,
 				"new_message_error", errMsg)

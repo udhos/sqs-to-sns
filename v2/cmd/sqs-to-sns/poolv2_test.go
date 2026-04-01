@@ -549,3 +549,111 @@ func TestV2LargeMessageFlushesImmediately(t *testing.T) {
 		t.Fatal("Expected found=true: The 9-byte message is full because the 2-byte survivor won't fit")
 	}
 }
+
+// go test -v -count 1 -run '^TestPoolV2PerMessagePadding$' ./...
+func TestPoolV2PerMessagePadding(t *testing.T) {
+	t.Run("Padding impacts batch limit", func(t *testing.T) {
+		// Limit 10, Padding 2.
+		// A 3-byte message effectively becomes 5 bytes.
+		p := newPoolV2(10, 2)
+
+		m3, _ := createTestMessage(3)
+
+		p.add(m3)
+		// 3 + 2 = 5. Not full.
+		if _, found := p.getFullBatch(); found {
+			t.Error("Should not be full with one 3-byte message (effectively 5)")
+		}
+
+		p.add(m3)
+		// (3+2) + (3+2) = 10. Exactly full.
+		batch, found := p.getFullBatch()
+		if !found {
+			t.Fatal("Should be full with two 3-byte messages due to padding")
+		}
+		if len(batch) != 2 {
+			t.Errorf("Expected 2 messages, got %d", len(batch))
+		}
+	})
+
+	t.Run("Padding causes skip of large message", func(t *testing.T) {
+		// Limit 10, Padding 5.
+		p := newPoolV2(10, 5)
+
+		m1, _ := createTestMessage(1) // effective size: 1 + 5 = 6
+		m5, _ := createTestMessage(5) // effective size: 5 + 5 = 10
+
+		p.add(m1)
+		p.add(m5) // This won't fit: 6 + 10 > 10
+
+		// Should return only m1
+		batch, found := p.getFullBatch()
+		if !found {
+			t.Fatal("Expected batch to be found via density rule (m5 doesn't fit)")
+		}
+		if len(batch) != 1 || batch[0].snsPayloadSize != 1 {
+			t.Errorf("Expected only the 1-byte message, got %v", batch)
+		}
+
+		// Verify m5 is still waiting in the pool
+		remaining := p.getAvailable()
+		if len(remaining) != 1 || remaining[0].snsPayloadSize != 5 {
+			t.Error("The 5-byte message should have been skipped and remained in the pool")
+		}
+	})
+
+	t.Run("Zero padding behavior", func(t *testing.T) {
+		p := newPoolV2(10, 0)
+		m5, _ := createTestMessage(5)
+
+		p.add(m5)
+		p.add(m5)
+
+		_, found := p.getFullBatch()
+		if !found {
+			t.Error("With 0 padding, two 5-byte messages should fill 10-byte limit")
+		}
+	})
+
+	t.Run("Message plus padding exceeds total limit", func(t *testing.T) {
+		// Limit 10, Padding 11.
+		// Every message will effectively be at least 11 bytes.
+		p := newPoolV2(10, 11)
+		m1, _ := createTestMessage(1)
+
+		p.add(m1)
+
+		// Should never find a batch because 1+11 > 10
+		_, found := p.getFullBatch()
+		if found {
+			t.Error("Should not have found a batch for a message that exceeds limit via padding")
+		}
+	})
+
+	t.Run("Padding blocks middle message only", func(t *testing.T) {
+		// Limit 10, Padding 2
+		p := newPoolV2(10, 2)
+
+		m1, _ := createTestMessage(1) // eff: 3
+		m5, _ := createTestMessage(5) // eff: 7
+
+		p.add(m1) // sum: 3
+		p.add(m5) // 3 + 7 = 10 (Fits!)
+		p.add(m1) // 10 + 3 = 13 (Too big, should be skipped)
+		p.add(m1) // wait, if we skip m5, can we fit m1?
+
+		// Let's try a clearer sequence:
+		// [m1 (3), m5 (7), m1 (3)]
+		// Batch 1 should be [m1, m5] (Total 10)
+		// Batch 2 should be [m1]
+	})
+}
+
+func TestNewPoolV2InvalidPadding(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("newPoolV2 should panic on negative padding")
+		}
+	}()
+	newPoolV2(100, -1)
+}
