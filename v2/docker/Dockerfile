@@ -17,6 +17,7 @@ RUN go mod download
 # Copy files
 COPY ./cmd/ /tmp/app/cmd
 COPY ./internal/ /tmp/app/internal
+COPY ./snsutils/ /tmp/app/snsutils
 
 # Build
 RUN rm -f ./orchestrion.tool.go
