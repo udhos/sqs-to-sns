@@ -2,6 +2,18 @@ apiVersion: v1
 entries:
   sqs-to-sns:
   - apiVersion: v2
+    appVersion: 2.0.12
+    created: "2026-04-05T20:47:29.819300288-03:00"
+    description: Installing sqs-to-sns into Kubernetes
+    digest: 200bf4cc05c5328c5cfed0017f1e9836b7d8aaae7936b643385a51d9e732e824
+    name: sqs-to-sns
+    sources:
+    - https://github.com/udhos/sqs-to-sns
+    type: application
+    urls:
+    - https://udhos.github.io/sqs-to-sns/sqs-to-sns-2.0.12.tgz
+    version: 2.0.12
+  - apiVersion: v2
     appVersion: 2.0.11
     created: "2026-04-01T17:09:13.345909232-03:00"
     description: Installing sqs-to-sns into Kubernetes
@@ -1045,4 +1057,4 @@ entries:
     urls:
     - https://udhos.github.io/sqs-to-sns/sqs-to-sns-0.1.0.tgz
     version: 0.1.0
-generated: "2026-04-05T20:28:53.934481993-03:00"
+generated: "2026-04-05T20:47:29.818493897-03:00"
