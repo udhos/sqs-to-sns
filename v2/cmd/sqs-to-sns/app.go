@@ -92,8 +92,9 @@ func (app *application) startReader(q *queue, root bool) {
 	for {
 		msg, mustStop, err := q.receive.receive(q)
 		if err != nil {
-
-			q.stats.receiveErrors.Add(1) // Track the failure
+			if !mustStop {
+				q.stats.receiveErrors.Add(1) // Track non-shutdown receive failures
+			}
 
 			if mustStop {
 				// error but stopped, log and exit.

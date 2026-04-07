@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -161,4 +164,97 @@ func ExampleGetBatchSizing() {
 
 	// Output:
 	// items=2 grand_total=300: 1/2:body=100/attr=0/total_now=100/total_cached=100/attr_debug=[] 2/2:body=200/attr=0/total_now=200/total_cached=200/attr_debug=[]
+}
+
+type receiverErrMock struct {
+	mu       sync.Mutex
+	err      error
+	mustStop bool
+}
+
+func (r *receiverErrMock) receive(_ *queue) ([]message, bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return nil, r.mustStop, r.err
+}
+
+func (r *receiverErrMock) stop(_ *queue) {
+	r.mu.Lock()
+	r.err = context.Canceled
+	r.mustStop = true
+	r.mu.Unlock()
+}
+
+// go test -count 1 -run '^TestStartReaderReceiveErrorStats$' ./...
+func TestStartReaderReceiveErrorStats(t *testing.T) {
+	t.Run("do_not_count_shutdown_error", func(t *testing.T) {
+		q := &queue{
+			queueCfg: queueConfig{
+				ReceiveErrorCooldown: 1 * time.Millisecond,
+			},
+			publishCh: make(chan message, 1),
+			receive: &receiverErrMock{
+				err:      context.Canceled,
+				mustStop: true,
+			},
+			logger: slog.Default(),
+		}
+
+		initStats(&q.stats)
+		q.readers.Add(1)
+
+		app := &application{}
+		app.startReader(q, false)
+
+		if got := q.stats.receiveErrors.Load(); got != 0 {
+			t.Fatalf("receiveErrors: got %d want 0", got)
+		}
+	})
+
+	t.Run("count_non_shutdown_error", func(t *testing.T) {
+		recv := &receiverErrMock{
+			err:      errors.New("transient receive error"),
+			mustStop: false,
+		}
+
+		q := &queue{
+			queueCfg: queueConfig{
+				ReceiveErrorCooldown: 1 * time.Millisecond,
+			},
+			publishCh: make(chan message, 1),
+			receive:   recv,
+			logger:    slog.Default(),
+		}
+
+		initStats(&q.stats)
+		q.readers.Add(1)
+
+		done := make(chan struct{})
+		app := &application{}
+
+		go func() {
+			defer close(done)
+			app.startReader(q, false)
+		}()
+
+		deadline := time.After(100 * time.Millisecond)
+		for {
+			if q.stats.receiveErrors.Load() > 0 {
+				break
+			}
+			select {
+			case <-deadline:
+				t.Fatal("timeout waiting for receiveErrors increment")
+			case <-time.After(1 * time.Millisecond):
+			}
+		}
+
+		recv.stop(q)
+
+		select {
+		case <-done:
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("timeout waiting startReader to stop")
+		}
+	})
 }
