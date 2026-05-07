@@ -10,7 +10,7 @@ go install github.com/client9/misspell/cmd/misspell@latest
 go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
 
 echo "adding orchestrion pin"
-go install github.com/DataDog/orchestrion@v1.8.0
+go install github.com/DataDog/orchestrion@v1.10.0
 orchestrion pin
 
 gofmt -s -w .

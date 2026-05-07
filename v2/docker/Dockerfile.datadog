@@ -1,6 +1,6 @@
 # STEP 1 build executable binary
 
-FROM golang:1.26.2-alpine3.23 AS builder
+FROM golang:1.26.3-alpine3.23 AS builder
 
 RUN apk update
 RUN apk add git
@@ -20,7 +20,7 @@ COPY ./internal/ /tmp/app/internal
 COPY ./snsutils/ /tmp/app/snsutils
 
 # Build
-RUN go install github.com/DataDog/orchestrion@v1.9.0
+RUN go install github.com/DataDog/orchestrion@v1.10.0
 RUN orchestrion pin
 RUN go env -w CGO_ENABLED=0
 RUN orchestrion go build -o /tmp/sqs-to-sns github.com/udhos/sqs-to-sns/v2/cmd/sqs-to-sns
